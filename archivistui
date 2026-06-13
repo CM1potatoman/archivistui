@@ -1,0 +1,1553 @@
+--[[
+    Archivist UI Library v4
+    LoR Floor Selection → Tab Content flow
+    Corrected LoR image asset IDs (icon1 = active, icon2 = inactive)
+    Working ESP / Combat / Visuals / Config systems
+    FIXED: Dropdown now renders in ScreenGui root, tracked via RenderStepped — no more scroll clipping
+]]
+
+-- ═══════════════════════════════════════════════════════
+--  SERVICES
+-- ═══════════════════════════════════════════════════════
+local function S(n)
+    local s = game:GetService(n)
+    local ok, r = pcall(function() return cloneref(s) end)
+    return (ok and r) or s
+end
+local UIS     = S("UserInputService")
+local Tween   = S("TweenService")
+local CoreGui = S("CoreGui")
+local HttpSvc = S("HttpService")
+local RunSvc  = S("RunService")
+local Players = S("Players")
+local Camera  = workspace.CurrentCamera
+
+-- ═══════════════════════════════════════════════════════
+--  FLOOR ASSETS  (icon1 = ACTIVE, icon2 = INACTIVE)
+-- ═══════════════════════════════════════════════════════
+local FLOORS = {
+    Binah     = { active = "rbxassetid://118992540792741", inactive = "rbxassetid://70750006605288"   },
+    Chesed    = { active = "rbxassetid://70843742734960",  inactive = "rbxassetid://118099007993159"  },
+    Gebura    = { active = "rbxassetid://73737623874266",  inactive = "rbxassetid://103578813659672"  },
+    Hod       = { active = "rbxassetid://70998689334440",  inactive = "rbxassetid://117547692964559"  },
+    Hokma     = { active = "rbxassetid://116828017290558", inactive = "rbxassetid://96769602392426"   },
+    Kether    = { active = "rbxassetid://100919946051338", inactive = "rbxassetid://113591106629652"  },
+    Malkuth   = { active = "rbxassetid://136072273919078", inactive = "rbxassetid://87204149877947"   },
+    Netzach   = { active = "rbxassetid://140337404902522", inactive = "rbxassetid://112098956605250"  },
+    Tiphereth = { active = "rbxassetid://76027672571785",  inactive = "rbxassetid://108436112621359"  },
+    Yesod     = { active = "rbxassetid://74745839559448",  inactive = "rbxassetid://112658823972496"  },
+}
+
+local FLOOR_DESCS = {
+    Malkuth   = "Floor of History",
+    Yesod     = "Floor of Technological Sciences",
+    Hod       = "Floor of Literature",
+    Netzach   = "Floor of Art",
+    Tiphereth = "Floor of Natural Sciences",
+    Gebura    = "Floor of Language",
+    Chesed    = "Floor of Social Sciences",
+    Binah     = "Floor of Philosophy",
+    Hokma     = "Floor of Religion",
+    Kether    = "Floor of General Works",
+}
+
+local UI_FRAME   = "rbxassetid://95809095448101"
+local SCROLL_UP  = "rbxassetid://82653477798138"
+local SCROLL_DN  = "rbxassetid://124907630481805"
+
+-- ═══════════════════════════════════════════════════════
+--  PALETTE
+-- ═══════════════════════════════════════════════════════
+local K = {
+    BG          = Color3.fromRGB(6,   4,   2),
+    Panel       = Color3.fromRGB(11,  8,   5),
+    PanelHover  = Color3.fromRGB(20,  15,  9),
+    PanelActive = Color3.fromRGB(15,  11,  6),
+    GoldDark    = Color3.fromRGB(85,  62,  20),
+    Gold        = Color3.fromRGB(170, 130, 48),
+    GoldBright  = Color3.fromRGB(210, 168, 72),
+    GoldShine   = Color3.fromRGB(240, 200, 100),
+    Teal        = Color3.fromRGB(55,  205, 188),
+    TealDim     = Color3.fromRGB(25,  100, 90),
+    TextGold    = Color3.fromRGB(190, 150, 60),
+    TextBright  = Color3.fromRGB(225, 198, 120),
+    TextDim     = Color3.fromRGB(100, 78,  40),
+    TextTeal    = Color3.fromRGB(55,  205, 188),
+    Red         = Color3.fromRGB(180, 50,  50),
+    Black       = Color3.fromRGB(0,   0,   0),
+}
+
+-- ═══════════════════════════════════════════════════════
+--  HELPERS
+-- ═══════════════════════════════════════════════════════
+local function tw(o, p, t, s, d)
+    Tween:Create(o, TweenInfo.new(t or .15, s or Enum.EasingStyle.Quad, d or Enum.EasingDirection.Out), p):Play()
+end
+
+local function mk(cls, props)
+    local i = Instance.new(cls)
+    for k, v in pairs(props) do if k ~= "Parent" then i[k] = v end end
+    if props.Parent then i.Parent = props.Parent end
+    return i
+end
+
+local function stroke(p, col, thick, trans)
+    return mk("UIStroke", {Color=col, Thickness=thick or 1, Transparency=trans or 0, Parent=p})
+end
+
+local function corner(p, r)
+    return mk("UICorner", {CornerRadius=UDim.new(0, r or 2), Parent=p})
+end
+
+local function pad(p, t, b, l, r)
+    return mk("UIPadding", {
+        PaddingTop=UDim.new(0,t or 0), PaddingBottom=UDim.new(0,b or 0),
+        PaddingLeft=UDim.new(0,l or 0), PaddingRight=UDim.new(0,r or 0), Parent=p
+    })
+end
+
+local function list(p, gap, dir, ha)
+    return mk("UIListLayout", {
+        Padding=UDim.new(0, gap or 4),
+        FillDirection=dir or Enum.FillDirection.Vertical,
+        HorizontalAlignment=ha or Enum.HorizontalAlignment.Left,
+        SortOrder=Enum.SortOrder.LayoutOrder, Parent=p
+    })
+end
+
+
+
+local function brackets(f, col, sz)
+    col = col or K.GoldBright; sz = sz or 8
+    for _, ax in ipairs({0, 1}) do for _, ay in ipairs({0, 1}) do
+        mk("Frame", {Size=UDim2.fromOffset(sz,1),  Position=UDim2.new(ax,ax==0 and 0 or -sz, ay, ay==0 and 0 or -1),  BackgroundColor3=col, BorderSizePixel=0, ZIndex=f.ZIndex+3, Parent=f})
+        mk("Frame", {Size=UDim2.fromOffset(1, sz), Position=UDim2.new(ax,ax==0 and 0 or -1,  ay, ay==0 and 0 or -sz), BackgroundColor3=col, BorderSizePixel=0, ZIndex=f.ZIndex+3, Parent=f})
+    end end
+end
+
+local function lorPanel(f, col, thick)
+    f.BorderSizePixel = 0
+    local st = stroke(f, col or K.Gold, thick or 1)
+    brackets(f, K.GoldBright)
+    return st
+end
+
+local function draggable(frame, handle)
+    local down, ds, dp = false
+    handle = handle or frame
+    handle.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+            down = true; ds = i.Position; dp = frame.Position
+        end
+    end)
+    handle.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then down = false end
+    end)
+    UIS.InputChanged:Connect(function(i)
+        if down and i.UserInputType == Enum.UserInputType.MouseMovement then
+            local d = i.Position - ds
+            frame.Position = UDim2.new(dp.X.Scale, dp.X.Offset+d.X, dp.Y.Scale, dp.Y.Offset+d.Y)
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════
+--  CONFIG
+-- ═══════════════════════════════════════════════════════
+
+-- Flat root saves with arc_ prefix — works on every executor without subfolder support
+local CFG_PREFIX = "arc_"
+
+local function cfgSave(meta, flags, nameOverride)
+    if not (meta and meta.enabled) then return end
+    if not writefile then
+        warn("Archivist | writefile not available")
+        return
+    end
+    local ok, err = pcall(function()
+        local fname = nameOverride or meta.file
+        local path  = CFG_PREFIX .. fname .. ".json"
+        local data  = {}
+        for flag, el in pairs(flags) do
+            if     el.CurrentValue   ~= nil then data[flag] = el.CurrentValue
+            elseif el.CurrentKeybind ~= nil then data[flag] = el.CurrentKeybind
+            elseif el.CurrentOption  ~= nil then data[flag] = el.CurrentOption
+            elseif el.CurrentColor   ~= nil then data[flag] = {R=el.CurrentColor.R, G=el.CurrentColor.G, B=el.CurrentColor.B}
+            end
+        end
+        writefile(path, HttpSvc:JSONEncode(data))
+    end)
+    if not ok then warn("Archivist | cfgSave failed: " .. tostring(err)) end
+end
+
+local _saveTicks = {}
+local function cfgSaveLazy(meta, flags, nameOverride)
+    pcall(function()
+        local key = tostring(meta)
+        _saveTicks[key] = (_saveTicks[key] or 0) + 1
+        local myTick = _saveTicks[key]
+        local cb = function() if _saveTicks[key] == myTick then cfgSave(meta, flags, nameOverride) end end
+        if task and task.delay then task.delay(2, cb)
+        elseif delay then delay(2, cb)
+        else task.spawn(function() task.wait(2); cb() end) end
+    end)
+end
+
+local function cfgLoad(meta, flags, nameOverride)
+    if not (meta and meta.enabled) then return end
+    if not readfile then
+        warn("Archivist | readfile not available")
+        return
+    end
+    local fname = nameOverride or meta.file
+    local path  = CFG_PREFIX .. fname .. ".json"
+    local raw
+    local readOk = pcall(function() raw = readfile(path) end)
+    if not readOk or not raw or raw == "" then
+        warn("Archivist | No config file at: " .. path)
+        return
+    end
+    local ok, data = pcall(function() return HttpSvc:JSONDecode(raw) end)
+    if not ok or not data then
+        warn("Archivist | cfgLoad failed to parse: " .. tostring(data))
+        return
+    end
+    for flag, val in pairs(data) do
+        local el = flags[flag]
+        if el and el.Set then
+            local setOk, setErr = pcall(function()
+                if type(val) == "table" and val.R then
+                    el:Set(Color3.new(val.R, val.G, val.B))
+                else
+                    el:Set(val)
+                end
+            end)
+            if not setOk then
+                warn("Archivist | cfgLoad failed to set flag '" .. flag .. "': " .. tostring(setErr))
+            end
+        end
+    end
+end
+
+local function cfgList(meta)
+    local out = {}
+    if not listfiles then return {"(none saved)"} end
+    pcall(function()
+        local seen = {}
+        local files = {}
+        -- Try root paths; image confirms arc_ files live in executor root
+        for _, p in ipairs({"", ".", "./"}) do
+            local ok, res = pcall(listfiles, p)
+            if ok and res and #res > 0 then files = res; break end
+        end
+        for _, fpath in ipairs(files) do
+            local s = tostring(fpath)
+            -- Match arc_NAME.json anywhere in the path string
+            local name = s:match("[/\\]?"..CFG_PREFIX.."([^/\\]+)%.json$")
+                      or s:match("^"..CFG_PREFIX.."([^/\\]+)%.json$")
+            if name and not seen[name] then
+                seen[name] = true
+                table.insert(out, name)
+            end
+        end
+    end)
+    return #out > 0 and out or {"(none saved)"}
+end
+
+-- ═══════════════════════════════════════════════════════
+--  NOTIFICATIONS
+-- ═══════════════════════════════════════════════════════
+local _nh
+local function getNH()
+    if _nh and _nh.Parent then return _nh end
+    local g = mk("ScreenGui", {Name="ArchivistNotifs", ResetOnSpawn=false, ZIndexBehavior=Enum.ZIndexBehavior.Sibling, DisplayOrder=300})
+    pcall(function() g.Parent = gethui() end)
+    if not g.Parent then pcall(function() g.Parent = CoreGui end) end
+    local f = mk("Frame", {Size=UDim2.new(0,270,1,0), Position=UDim2.new(1,-282,0,0), BackgroundTransparency=1, Parent=g})
+    list(f, 6); pad(f, 12, 12, 0, 0)
+    _nh = f; return f
+end
+
+local function Notify(opts)
+    local h = getNH(); local dur = opts.Duration or 5
+    local card = mk("Frame", {Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y, BackgroundColor3=K.Panel, Parent=h})
+    lorPanel(card, K.Gold)
+    mk("Frame", {Size=UDim2.fromOffset(2,36), BackgroundColor3=K.GoldBright, BorderSizePixel=0, ZIndex=3, Parent=card})
+    local inner = mk("Frame", {Size=UDim2.new(1,-10,1,0), Position=UDim2.fromOffset(10,0), AutomaticSize=Enum.AutomaticSize.Y, BackgroundTransparency=1, Parent=card})
+    pad(inner, 8, 8, 4, 4); list(inner, 3)
+    mk("TextLabel", {Size=UDim2.new(1,0,0,16), BackgroundTransparency=1, Text=opts.Title or "Notice", TextColor3=K.TextTeal, TextSize=13, Font=Enum.Font.Antique, TextXAlignment=Enum.TextXAlignment.Left, Parent=inner})
+    if opts.Content then
+        mk("TextLabel", {Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y, BackgroundTransparency=1, Text=opts.Content, TextColor3=K.TextGold, TextSize=11, Font=Enum.Font.Gotham, TextXAlignment=Enum.TextXAlignment.Left, TextWrapped=true, Parent=inner})
+    end
+    local pb = mk("Frame", {Size=UDim2.new(1,0,0,1), BackgroundColor3=K.GoldDark, BorderSizePixel=0, Parent=inner})
+    mk("Frame", {Size=UDim2.new(1,0,1,0), BackgroundColor3=K.Gold, BorderSizePixel=0, Parent=pb})
+    local pf = pb:FindFirstChild("Frame") or pb
+    card.BackgroundTransparency = 1; tw(card, {BackgroundTransparency=0}, 0.2)
+    tw(pf, {Size=UDim2.new(0,0,1,0)}, dur, Enum.EasingStyle.Linear)
+    task.delay(dur, function() tw(card, {BackgroundTransparency=1}, 0.3); task.delay(0.35, function() card:Destroy() end) end)
+end
+
+-- ═══════════════════════════════════════════════════════
+--  LOADING SCREEN
+-- ═══════════════════════════════════════════════════════
+local function showLoading(parent, title, sub, cb)
+    local f = mk("Frame", {Size=UDim2.fromScale(1,1), BackgroundColor3=K.BG, ZIndex=50, Parent=parent})
+    local inner = mk("Frame", {Size=UDim2.fromOffset(300,120), Position=UDim2.fromScale(.5,.5), AnchorPoint=Vector2.new(.5,.5), BackgroundTransparency=1, Parent=f})
+    list(inner, 10, Enum.FillDirection.Vertical, Enum.HorizontalAlignment.Center)
+    mk("Frame", {Size=UDim2.new(.7,0,0,1), BackgroundColor3=K.Gold, BackgroundTransparency=.4, BorderSizePixel=0, Parent=inner})
+    mk("TextLabel", {Size=UDim2.new(1,0,0,32), BackgroundTransparency=1, Text=title or "Archivist", TextColor3=K.TextTeal, TextSize=24, Font=Enum.Font.Antique, Parent=inner})
+    if sub and sub ~= "" then
+        mk("TextLabel", {Size=UDim2.new(1,0,0,16), BackgroundTransparency=1, Text=sub, TextColor3=K.TextDim, TextSize=11, Font=Enum.Font.Gotham, Parent=inner})
+    end
+    local bb = mk("Frame", {Size=UDim2.new(.9,0,0,2), BackgroundColor3=K.GoldDark, BorderSizePixel=0, Parent=inner})
+    local bf = mk("Frame", {Size=UDim2.new(0,0,1,0), BackgroundColor3=K.Gold, BorderSizePixel=0, Parent=bb})
+    mk("Frame", {Size=UDim2.new(.7,0,0,1), BackgroundColor3=K.Gold, BackgroundTransparency=.4, BorderSizePixel=0, Parent=inner})
+    tw(bf, {Size=UDim2.new(1,0,1,0)}, 1.5, Enum.EasingStyle.Quart)
+    task.delay(1.7, function()
+        tw(f, {BackgroundTransparency=1}, 0.4)
+        task.delay(.45, function() f:Destroy(); if cb then cb() end end)
+    end)
+end
+
+-- ═══════════════════════════════════════════════════════
+--  UI ELEMENTS
+-- ═══════════════════════════════════════════════════════
+local E = {}
+
+function E.Toggle(parent, opts, flags, meta)
+    local val = opts.CurrentValue == true
+    local row = mk("Frame", {Size=UDim2.new(1,0,0,38), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=parent, ClipsDescendants=false})
+    local rst = lorPanel(row, val and K.TealDim or K.GoldDark)
+    local bar = mk("Frame", {Size=UDim2.new(0,2,1,0), BackgroundColor3=K.Teal, BackgroundTransparency=val and 0 or 1, BorderSizePixel=0, ZIndex=3, Parent=row})
+    local lbl = mk("TextLabel", {Size=UDim2.new(1,-56,1,0), Position=UDim2.fromOffset(10,0), BackgroundTransparency=1, Text=opts.Name or "Toggle", TextColor3=val and K.TextBright or K.TextGold, TextSize=12, Font=Enum.Font.Gotham, TextXAlignment=Enum.TextXAlignment.Left, Parent=row})
+    local track = mk("Frame", {Size=UDim2.fromOffset(38,18), Position=UDim2.new(1,-48,0.5,-9), BackgroundColor3=val and K.TealDim or K.BG, BorderSizePixel=0, Parent=row})
+    corner(track, 9)
+    local tst = stroke(track, val and K.Teal or K.GoldDark, 1)
+    local knob = mk("Frame", {Size=UDim2.fromOffset(12,12), Position=UDim2.new(val and 1 or 0, val and -14 or 3, 0.5, -6), BackgroundColor3=val and K.Teal or K.TextGold, BorderSizePixel=0, Parent=track})
+    corner(knob, 6)
+    local el = {CurrentValue=val}
+    local function set(v)
+        val = v; el.CurrentValue = v
+        tw(track, {BackgroundColor3=v and K.TealDim or K.BG}, 0.15)
+        tw(tst, {Color=v and K.Teal or K.GoldDark}, 0.15)
+        tw(knob, {Position=UDim2.new(v and 1 or 0, v and -14 or 3, 0.5, -6), BackgroundColor3=v and K.Teal or K.TextGold}, 0.15)
+        tw(bar, {BackgroundTransparency=v and 0 or 1}, 0.15)
+        tw(rst, {Color=v and K.TealDim or K.GoldDark}, 0.15)
+        lbl.TextColor3 = v and K.TextBright or K.TextGold
+        if opts.Flag then flags[opts.Flag] = el end; cfgSaveLazy(meta, flags)
+        if opts.Callback then task.spawn(opts.Callback, v) end
+    end
+    el.Set = set
+    mk("TextButton", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Text="", Parent=row}).MouseButton1Click:Connect(function() set(not val) end)
+    row.MouseEnter:Connect(function() tw(row, {BackgroundColor3=K.PanelHover}, 0.1) end)
+    row.MouseLeave:Connect(function() tw(row, {BackgroundColor3=K.Panel}, 0.1) end)
+    if opts.Flag then flags[opts.Flag] = el end
+    return el
+end
+
+function E.Button(parent, opts, flags, meta)
+    local row = mk("Frame", {Size=UDim2.new(1,0,0,36), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=parent})
+    local rst = lorPanel(row, K.GoldDark)
+    mk("TextLabel", {Size=UDim2.fromOffset(14,36), Position=UDim2.fromOffset(8,0), BackgroundTransparency=1, Text="◁", TextColor3=K.GoldDark, TextSize=10, Font=Enum.Font.Gotham, Parent=row})
+    mk("TextLabel", {Size=UDim2.fromOffset(14,36), Position=UDim2.new(1,-22,0,0), BackgroundTransparency=1, Text="▷", TextColor3=K.GoldDark, TextSize=10, Font=Enum.Font.Gotham, Parent=row})
+    mk("TextLabel", {Size=UDim2.new(1,-44,1,0), Position=UDim2.fromOffset(22,0), BackgroundTransparency=1, Text=opts.Name or "Button", TextColor3=K.TextGold, TextSize=12, Font=Enum.Font.Antique, Parent=row})
+    local btn = mk("TextButton", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Text="", Parent=row})
+    btn.MouseEnter:Connect(function() tw(row, {BackgroundColor3=K.PanelHover}, 0.1); tw(rst, {Color=K.Gold}, 0.12) end)
+    btn.MouseLeave:Connect(function() tw(row, {BackgroundColor3=K.Panel}, 0.1); tw(rst, {Color=K.GoldDark}, 0.12) end)
+    btn.MouseButton1Down:Connect(function() tw(row, {BackgroundColor3=K.PanelActive}, 0.06) end)
+    btn.MouseButton1Up:Connect(function() tw(row, {BackgroundColor3=K.PanelHover}, 0.06) end)
+    btn.MouseButton1Click:Connect(function() if opts.Callback then task.spawn(opts.Callback) end end)
+    return {}
+end
+
+function E.Slider(parent, opts, flags, meta)
+    local range = opts.Range or {0,100}; local mn, mx = range[1], range[2]
+    local incr = opts.Increment or 1; local sfx = opts.Suffix or ""
+    local val = math.clamp(opts.CurrentValue or mn, mn, mx)
+    local function snap(v) return math.round((v-mn)/incr)*incr+mn end
+    local row = mk("Frame", {Size=UDim2.new(1,0,0,50), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=parent, ClipsDescendants=false})
+    lorPanel(row, K.GoldDark)
+    mk("TextLabel", {Size=UDim2.new(0.55,0,0,22), Position=UDim2.fromOffset(10,4), BackgroundTransparency=1, Text=opts.Name or "Slider", TextColor3=K.TextGold, TextSize=12, Font=Enum.Font.Gotham, TextXAlignment=Enum.TextXAlignment.Left, Parent=row})
+    local vlbl = mk("TextLabel", {Size=UDim2.new(0.42,0,0,22), Position=UDim2.new(0.55,0,0,4), BackgroundTransparency=1, Text=tostring(val)..(sfx~="" and " "..sfx or ""), TextColor3=K.TextBright, TextSize=11, Font=Enum.Font.GothamBold, TextXAlignment=Enum.TextXAlignment.Right, Parent=row})
+    local lp = 12
+    local track = mk("Frame", {Size=UDim2.new(1,-lp*2,0,2), Position=UDim2.new(0,lp,0,37), BackgroundColor3=K.GoldDark, BorderSizePixel=0, Parent=row})
+    local fill = mk("Frame", {Size=UDim2.new((val-mn)/(mx-mn),0,1,0), BackgroundColor3=K.Gold, BorderSizePixel=0, Parent=track})
+    local ksz = 11
+    local knob = mk("Frame", {Size=UDim2.fromOffset(ksz,ksz), Position=UDim2.new((val-mn)/(mx-mn),-ksz/2,0.5,-ksz/2), BackgroundColor3=K.GoldBright, BorderSizePixel=0, Rotation=45, ZIndex=4, Parent=track})
+    local el = {CurrentValue=val}
+    local function set(v)
+        v = math.clamp(snap(v), mn, mx); val = v; el.CurrentValue = v
+        local t = (v-mn)/(mx-mn)
+        tw(fill, {Size=UDim2.new(t,0,1,0)}, 0.07)
+        tw(knob, {Position=UDim2.new(t,-ksz/2,0.5,-ksz/2)}, 0.07)
+        vlbl.Text = tostring(v)..(sfx~="" and " "..sfx or "")
+        if opts.Flag then flags[opts.Flag] = el end; cfgSaveLazy(meta, flags)
+        if opts.Callback then task.spawn(opts.Callback, v) end
+    end
+    el.Set = set
+    local drag = false
+    local function fromX(x)
+        local rel = math.clamp(x - track.AbsolutePosition.X, 0, track.AbsoluteSize.X)
+        set(mn + (rel/track.AbsoluteSize.X)*(mx-mn))
+    end
+    track.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true; fromX(i.Position.X) end end)
+    knob.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=true end end)
+    UIS.InputChanged:Connect(function(i) if drag and i.UserInputType==Enum.UserInputType.MouseMovement then fromX(i.Position.X) end end)
+    UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag=false end end)
+    row.MouseEnter:Connect(function() tw(row, {BackgroundColor3=K.PanelHover}, 0.1) end)
+    row.MouseLeave:Connect(function() tw(row, {BackgroundColor3=K.Panel}, 0.1) end)
+    if opts.Flag then flags[opts.Flag] = el end
+    return el
+end
+
+function E.Input(parent, opts, flags, meta)
+    local row = mk("Frame", {Size=UDim2.new(1,0,0,54), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=parent})
+    lorPanel(row, K.GoldDark)
+    mk("TextLabel", {Size=UDim2.new(1,-12,0,20), Position=UDim2.fromOffset(10,4), BackgroundTransparency=1, Text=opts.Name or "Input", TextColor3=K.TextGold, TextSize=12, Font=Enum.Font.Gotham, TextXAlignment=Enum.TextXAlignment.Left, Parent=row})
+    local box = mk("TextBox", {Size=UDim2.new(1,-20,0,24), Position=UDim2.fromOffset(10,26), BackgroundColor3=K.BG, Text=opts.CurrentValue or "", PlaceholderText=opts.PlaceholderText or "", PlaceholderColor3=K.TextDim, TextColor3=K.TextBright, TextSize=12, Font=Enum.Font.Gotham, ClearTextOnFocus=false, Parent=row})
+    local bst = stroke(box, K.GoldDark, 1); pad(box, 0, 0, 6, 6)
+    box.Focused:Connect(function() tw(bst, {Color=K.Teal}, 0.15) end)
+    local el = {CurrentValue=opts.CurrentValue or "", _box=box, Set=function(self, v) box.Text=v; el.CurrentValue=v end}
+    box.FocusLost:Connect(function()
+        tw(bst, {Color=K.GoldDark}, 0.15)
+        if opts.RemoveTextAfterFocusLost then box.Text = "" end
+        el.CurrentValue = box.Text
+        if opts.Flag then flags[opts.Flag] = el end; cfgSave(meta, flags)
+        if opts.Callback then task.spawn(opts.Callback, box.Text) end
+    end)
+    box:GetPropertyChangedSignal("Text"):Connect(function() el.CurrentValue = box.Text end)
+    if opts.Flag then flags[opts.Flag] = el end
+    return el
+end
+
+-- ═══════════════════════════════════════════════════════
+--  DROPDOWN  (v5 — inline expand, pushes content down,
+--             no floating, no ZIndex issues)
+-- ═══════════════════════════════════════════════════════
+function E.Dropdown(parent, opts, flags, meta, guiRoot)
+    local sel = type(opts.CurrentOption)=="table" and opts.CurrentOption
+                or (opts.CurrentOption and {opts.CurrentOption} or {})
+    local multi = opts.MultipleOptions == true
+    local open  = false
+
+    local ROW_H    = 30
+    local MAX_ROWS = 6  -- rows visible before scrolling
+
+    -- ── Outer wrapper: header + collapsible list in one frame ────
+    local wrapper = mk("Frame", {
+        Size             = UDim2.new(1,0,0,36),
+        BackgroundTransparency = 1,
+        BorderSizePixel  = 0,
+        ClipsDescendants = false,
+        Parent           = parent,
+    })
+
+    -- ── Header row ───────────────────────────────────────────────
+    local header = mk("Frame", {
+        Size             = UDim2.new(1,0,0,36),
+        BackgroundColor3 = K.Panel,
+        BorderSizePixel  = 0,
+        Parent           = wrapper,
+    })
+    corner(header, 3)
+    local wst = lorPanel(header, K.GoldDark)
+
+    mk("TextLabel", {
+        Size=UDim2.new(0.55,0,0,36), Position=UDim2.fromOffset(10,0),
+        BackgroundTransparency=1, Text=opts.Name or "Dropdown",
+        TextColor3=K.TextGold, TextSize=12, Font=Enum.Font.Gotham,
+        TextXAlignment=Enum.TextXAlignment.Left, Parent=header,
+    })
+    local vl = mk("TextLabel", {
+        Size=UDim2.new(0.38,0,0,36), Position=UDim2.new(0.55,0,0,0),
+        BackgroundTransparency=1,
+        Text=#sel>0 and table.concat(sel,", ") or "None",
+        TextColor3=K.TextBright, TextSize=11, Font=Enum.Font.Gotham,
+        TextXAlignment=Enum.TextXAlignment.Right,
+        TextTruncate=Enum.TextTruncate.AtEnd, Parent=header,
+    })
+    local arrowLbl = mk("TextLabel", {
+        Size=UDim2.fromOffset(16,36), Position=UDim2.new(1,-18,0,0),
+        BackgroundTransparency=1, Text="▾",
+        TextColor3=K.Gold, TextSize=12, Font=Enum.Font.Gotham,
+        Parent=header,
+    })
+
+    -- ── List panel (sits directly below header, same parent) ─────
+    local listPanel = mk("ScrollingFrame", {
+        Size                 = UDim2.new(1,0,0,0),
+        Position             = UDim2.fromOffset(0,38),   -- 36px header + 2px gap
+        BackgroundColor3     = Color3.fromRGB(8,6,3),
+        ClipsDescendants     = true,
+        BorderSizePixel      = 0,
+        ScrollBarThickness   = 4,
+        ScrollBarImageColor3 = K.Gold,
+        ScrollingDirection   = Enum.ScrollingDirection.Y,
+        CanvasSize           = UDim2.new(0,0,0,0),
+        Visible              = false,
+        Active               = true,
+        Parent               = wrapper,
+    })
+    stroke(listPanel, K.Gold, 1)
+    pad(listPanel, 4, 4, 0, 0)
+    list(listPanel, 0)
+
+    -- ── Element ──────────────────────────────────────────────────
+    local el = {CurrentOption = sel}
+    local optBtns = {}
+
+    local function disp()
+        vl.Text = #sel>0 and table.concat(sel,", ") or "None"
+    end
+
+    local function setWrapperHeight(extraH)
+        -- wrapper height = header + gap + list (or just header when closed)
+        wrapper.Size = UDim2.new(1,0,0, 36 + (extraH > 0 and (2 + extraH) or 0))
+    end
+
+    local function build()
+        for _, b in ipairs(optBtns) do b:Destroy() end
+        optBtns = {}
+        local optList = opts.Options or {}
+        for _, opt in ipairs(optList) do
+            local isSel = table.find(sel, opt) ~= nil
+            local row = mk("Frame", {
+                Size             = UDim2.new(1,0,0,ROW_H),
+                BackgroundColor3 = isSel and K.PanelActive or Color3.fromRGB(8,6,3),
+                BorderSizePixel  = 0,
+                Parent           = listPanel,
+            })
+            -- teal left accent for selected
+            mk("Frame", {
+                Size=UDim2.fromOffset(2,ROW_H),
+                BackgroundColor3=K.Teal,
+                BackgroundTransparency=isSel and 0 or 1,
+                BorderSizePixel=0, Parent=row,
+            })
+            mk("TextLabel", {
+                Size=UDim2.new(1,-14,1,0), Position=UDim2.fromOffset(10,0),
+                BackgroundTransparency=1, Text=opt,
+                TextColor3=isSel and K.TextTeal or K.TextGold,
+                TextSize=12,
+                Font=isSel and Enum.Font.GothamBold or Enum.Font.Gotham,
+                TextXAlignment=Enum.TextXAlignment.Left, Parent=row,
+            })
+            mk("Frame", {
+                Size=UDim2.new(1,0,0,1), Position=UDim2.new(0,0,1,-1),
+                BackgroundColor3=K.GoldDark, BackgroundTransparency=0.6,
+                BorderSizePixel=0, Parent=row,
+            })
+            local btn = mk("TextButton", {
+                Size=UDim2.fromScale(1,1), BackgroundTransparency=1,
+                Text="", Parent=row,
+            })
+            btn.MouseEnter:Connect(function()
+                if not isSel then tw(row, {BackgroundColor3=K.PanelHover}, 0.06) end
+            end)
+            btn.MouseLeave:Connect(function()
+                if not isSel then tw(row, {BackgroundColor3=Color3.fromRGB(8,6,3)}, 0.06) end
+            end)
+            btn.MouseButton1Click:Connect(function()
+                if multi then
+                    local idx = table.find(sel, opt)
+                    if idx then table.remove(sel, idx) else table.insert(sel, opt) end
+                else
+                    sel = {opt}
+                end
+                el.CurrentOption = sel; disp(); build()
+                if opts.Flag then flags[opts.Flag] = el end
+                cfgSave(meta, flags)
+                if opts.Callback then
+                    task.spawn(opts.Callback, multi and sel or sel[1])
+                end
+                if not multi then
+                    -- close after pick
+                    open = false
+                    listPanel.Visible = false
+                    setWrapperHeight(0)
+                    tw(wst, {Color=K.GoldDark}, 0.15)
+                    arrowLbl.Text = "▾"
+                end
+            end)
+            table.insert(optBtns, row)
+        end
+        local contentH = #optList * ROW_H + 8
+        local listH    = math.min(contentH, MAX_ROWS * ROW_H + 8)
+        listPanel.CanvasSize = UDim2.new(0,0,0,contentH)
+        listPanel.Size = UDim2.new(1,0,0,listH)
+        setWrapperHeight(listH)
+    end
+
+    -- ── Toggle ───────────────────────────────────────────────────
+    local function closeList()
+        open = false
+        listPanel.Visible = false
+        setWrapperHeight(0)
+        tw(wst, {Color=K.GoldDark}, 0.15)
+        arrowLbl.Text = "▾"
+    end
+
+    local function openList()
+        open = true
+        build()
+        listPanel.Visible = true
+        tw(wst, {Color=K.Gold}, 0.15)
+        arrowLbl.Text = "▴"
+    end
+
+    mk("TextButton", {
+        Size=UDim2.fromScale(1,1), BackgroundTransparency=1,
+        Text="", ZIndex=3, Parent=header,
+    }).MouseButton1Click:Connect(function()
+        if open then closeList() else openList() end
+    end)
+
+    header.MouseEnter:Connect(function() tw(header, {BackgroundColor3=K.PanelHover}, 0.1) end)
+    header.MouseLeave:Connect(function() tw(header, {BackgroundColor3=K.Panel}, 0.1) end)
+
+    el.Set = function(self, v)
+        sel = type(v)=="table" and v or {v}
+        el.CurrentOption = sel; disp()
+        if open then build() end
+    end
+    el.Refresh = function(self, newOpts)
+        opts.Options = newOpts
+        if open then build() end
+    end
+
+    if opts.Flag then flags[opts.Flag] = el end
+    return el
+end
+
+function E.Keybind(parent, opts, flags, meta)
+    local key = opts.CurrentKeybind or "None"; local listening = false
+    local row = mk("Frame", {Size=UDim2.new(1,0,0,36), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=parent})
+    lorPanel(row, K.GoldDark)
+    mk("TextLabel", {Size=UDim2.new(1,-82,1,0), Position=UDim2.fromOffset(10,0), BackgroundTransparency=1, Text=opts.Name or "Keybind", TextColor3=K.TextGold, TextSize=12, Font=Enum.Font.Gotham, TextXAlignment=Enum.TextXAlignment.Left, Parent=row})
+    local function friendlyKey(k)
+        local ok, str = pcall(function() return UIS:GetStringForKeyCode(Enum.KeyCode[k]) end)
+        return (ok and str and str ~= "") and str or k
+    end
+    local kb = mk("TextButton", {
+        Size=UDim2.fromOffset(70,22), Position=UDim2.new(1,-76,0.5,-11),
+        BackgroundColor3=K.BG, Text="["..friendlyKey(key).."]",
+        TextColor3=K.TextTeal, TextSize=11, Font=Enum.Font.GothamBold,
+        ZIndex=5, Parent=row,
+    })
+    stroke(kb, K.GoldDark, 1); corner(kb, 2)
+    local el = {CurrentKeybind=key}
+    el.Set = function(self, k)
+        k = tostring(k); key = k; el.CurrentKeybind = k
+        kb.Text = "[" .. friendlyKey(k) .. "]"
+    end
+    kb.MouseButton1Click:Connect(function()
+        if listening then return end
+        listening = true; kb.Text = "[ ? ]"
+        tw(kb, {BackgroundColor3=K.PanelHover}, 0.1)
+        local conn
+        conn = UIS.InputBegan:Connect(function(i)
+            pcall(function()
+                local k = ""
+                if i.UserInputType == Enum.UserInputType.Keyboard then
+                    k = tostring(i.KeyCode):gsub("Enum%.KeyCode%.", "")
+                elseif tostring(i.UserInputType):find("MouseButton") then
+                    k = tostring(i.UserInputType):gsub("Enum%.UserInputType%.", "")
+                end
+                if k == "Escape" then
+                    listening = false; conn:Disconnect()
+                    tw(kb, {BackgroundColor3=K.BG}, 0.1); el:Set(key)
+                elseif k ~= "" and k ~= "Unknown" then
+                    listening = false; conn:Disconnect()
+                    tw(kb, {BackgroundColor3=K.BG}, 0.1); el:Set(k)
+                    if opts.Flag then flags[opts.Flag] = el end
+                    pcall(cfgSaveLazy, meta, flags)
+                    if opts.Callback then pcall(opts.Callback, k) end
+                end
+            end)
+        end)
+    end)
+    row.MouseEnter:Connect(function() tw(row, {BackgroundColor3=K.PanelHover}, 0.1) end)
+    row.MouseLeave:Connect(function() tw(row, {BackgroundColor3=K.Panel}, 0.1) end)
+    if opts.Flag then flags[opts.Flag] = el end
+    return el
+end
+
+function E.ColorPicker(parent, opts, flags, meta)
+    local color = opts.Color or Color3.fromRGB(255,255,255)
+    local row = mk("Frame", {Size=UDim2.new(1,0,0,36), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=parent})
+    lorPanel(row, K.GoldDark)
+    mk("TextLabel", {Size=UDim2.new(1,-92,1,0), Position=UDim2.fromOffset(10,0), BackgroundTransparency=1, Text=opts.Name or "Color", TextColor3=K.TextGold, TextSize=12, Font=Enum.Font.Gotham, TextXAlignment=Enum.TextXAlignment.Left, Parent=row})
+    local sw = mk("Frame", {Size=UDim2.fromOffset(20,14), Position=UDim2.new(1,-26,0.5,-7), BackgroundColor3=color, BorderSizePixel=0, Parent=row})
+    stroke(sw, K.GoldDark, 1)
+    local hb = mk("TextBox", {Size=UDim2.fromOffset(62,20), Position=UDim2.new(1,-90,0.5,-10), BackgroundColor3=K.BG, Text=string.format("#%02X%02X%02X", math.round(color.R*255), math.round(color.G*255), math.round(color.B*255)), TextColor3=K.TextTeal, TextSize=10, Font=Enum.Font.Code, ClearTextOnFocus=false, Parent=row})
+    stroke(hb, K.GoldDark, 1); pad(hb, 0, 0, 4, 4)
+    local el = {CurrentColor=color}
+    el.Set = function(self, c)
+        color = c; el.CurrentColor = c; sw.BackgroundColor3 = c
+        hb.Text = string.format("#%02X%02X%02X", math.round(c.R*255), math.round(c.G*255), math.round(c.B*255))
+        if opts.Callback then task.spawn(opts.Callback, c) end
+    end
+    hb.FocusLost:Connect(function()
+        local h = hb.Text:gsub("#","")
+        if #h==6 then
+            local r,g,b = tonumber(h:sub(1,2),16), tonumber(h:sub(3,4),16), tonumber(h:sub(5,6),16)
+            if r and g and b then el:Set(Color3.fromRGB(r,g,b)) end
+        end
+        if opts.Flag then flags[opts.Flag] = el end; cfgSave(meta, flags)
+    end)
+    row.MouseEnter:Connect(function() tw(row, {BackgroundColor3=K.PanelHover}, 0.1) end)
+    row.MouseLeave:Connect(function() tw(row, {BackgroundColor3=K.Panel}, 0.1) end)
+    if opts.Flag then flags[opts.Flag] = el end
+    return el
+end
+
+function E.Label(parent, opts)
+    local t = type(opts)=="string" and opts or (opts.Name or opts.Text or "")
+    local lbl = mk("TextLabel", {Size=UDim2.new(1,0,0,20), BackgroundTransparency=1, Text=t, TextColor3=K.TextDim, TextSize=11, Font=Enum.Font.Gotham, TextXAlignment=Enum.TextXAlignment.Left, Parent=parent})
+    pad(lbl, 0, 0, 10, 0)
+    return {Set=function(self, v) lbl.Text = v end}
+end
+
+function E.Paragraph(parent, opts)
+    local f = mk("Frame", {Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y, BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=parent})
+    stroke(f, K.GoldDark)
+    corner(f, 3)
+    pad(f, 8, 8, 10, 8)
+    list(f, 4)
+    mk("TextLabel", {Size=UDim2.new(1,0,0,16), BackgroundTransparency=1, Text=opts.Title or "", TextColor3=K.TextTeal, TextSize=12, Font=Enum.Font.Antique, TextXAlignment=Enum.TextXAlignment.Left, Parent=f})
+    mk("TextLabel", {Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y, BackgroundTransparency=1, Text=opts.Content or "", TextColor3=K.TextGold, TextSize=11, Font=Enum.Font.Gotham, TextXAlignment=Enum.TextXAlignment.Left, TextWrapped=true, Parent=f})
+    return {}
+end
+
+function E.Section(parent, title)
+    local f = mk("Frame", {Size=UDim2.new(1,0,0,22), BackgroundTransparency=1, Parent=parent})
+    mk("Frame", {Size=UDim2.new(1,0,0,1), Position=UDim2.fromOffset(0,10), BackgroundColor3=K.GoldDark, BorderSizePixel=0, Parent=f})
+    local bg = mk("Frame", {Size=UDim2.new(0,0,1,0), AutomaticSize=Enum.AutomaticSize.X, Position=UDim2.fromScale(0.5,0), AnchorPoint=Vector2.new(0.5,0), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=f})
+    pad(bg, 0, 0, 8, 8)
+    mk("TextLabel", {Size=UDim2.new(0,0,1,0), AutomaticSize=Enum.AutomaticSize.X, BackgroundTransparency=1, Text=title or "", TextColor3=K.GoldBright, TextSize=11, Font=Enum.Font.Antique, Parent=bg})
+    return {Set=function(self, t) for _, c in ipairs(bg:GetChildren()) do if c:IsA("TextLabel") then c.Text = t end end end}
+end
+
+-- ═══════════════════════════════════════════════════════
+--  LIBRARY
+-- ═══════════════════════════════════════════════════════
+local Lib = {Flags={}}
+
+function Lib:CreateWindow(options)
+    local flags  = self.Flags
+    local meta   = {
+        enabled = options.ConfigurationSaving and options.ConfigurationSaving.Enabled or false,
+        folder  = options.ConfigurationSaving and options.ConfigurationSaving.FolderName,
+        file    = options.ConfigurationSaving and options.ConfigurationSaving.FileName or "config",
+    }
+    local toggleKey = options.ToggleUIKeybind or "RightShift"
+
+    -- GUI root
+    local gui = mk("ScreenGui", {Name="Archivist", ResetOnSpawn=false, ZIndexBehavior=Enum.ZIndexBehavior.Sibling, DisplayOrder=100, IgnoreGuiInset=true})
+    pcall(function() gui.Parent = gethui() end)
+    if not gui.Parent then pcall(function() gui.Parent = CoreGui end) end
+
+    -- ── Patch E.Dropdown to close the gui reference via closure ──
+    -- We rebind CreateDropdown in the Tab API below to pass 'gui' automatically.
+
+    local WIN_W, WIN_H = 460, 700
+    local win = mk("Frame", {
+        Name="ArchivistWin",
+        Size=UDim2.fromOffset(WIN_W, WIN_H),
+        Position=UDim2.fromScale(0.5, 0.5),
+        AnchorPoint=Vector2.new(0.5, 0.5),
+        BackgroundColor3=K.BG,
+        ClipsDescendants=true,
+        Parent=gui,
+    })
+    mk("ImageLabel", {
+        Size=UDim2.new(1,32,1,32), Position=UDim2.new(0,-16,0,-16),
+        BackgroundTransparency=1, Image=UI_FRAME,
+        ScaleType=Enum.ScaleType.Slice, SliceCenter=Rect.new(40,40,460,460),
+        ZIndex=10, Parent=win,
+    })
+    mk("Frame", {Size=UDim2.new(1,0,0,2), BackgroundColor3=K.Gold, BorderSizePixel=0, ZIndex=5, Parent=win})
+    mk("Frame", {Size=UDim2.new(1,28,1,28), Position=UDim2.new(0,-14,0,-14), BackgroundColor3=K.Black, BackgroundTransparency=0.55, ZIndex=-1, Parent=win})
+
+    local topH = 42
+    local top = mk("Frame", {Size=UDim2.new(1,0,0,topH), Position=UDim2.fromOffset(0,2), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=win})
+    mk("Frame", {Size=UDim2.new(1,0,0,1), Position=UDim2.new(0,0,1,-1), BackgroundColor3=K.GoldDark, BorderSizePixel=0, Parent=top})
+    mk("Frame", {Size=UDim2.fromOffset(2,topH), BackgroundColor3=K.Gold, BorderSizePixel=0, ZIndex=3, Parent=top})
+    mk("TextLabel", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Text=options.Name or "Archivist", TextColor3=K.TextTeal, TextSize=18, Font=Enum.Font.Antique, TextXAlignment=Enum.TextXAlignment.Center, ZIndex=2, Parent=top})
+
+    local minimised = false; local hidden = false
+
+    local function mkTopBtn(xOff, lbl, cb)
+        local b = mk("TextButton", {Size=UDim2.fromOffset(22,22), Position=UDim2.new(1,xOff,0.5,-11), BackgroundColor3=K.Panel, Text=lbl, TextColor3=K.TextDim, TextSize=10, Font=Enum.Font.GothamBold, Parent=top})
+        stroke(b, K.GoldDark, 1); corner(b, 2)
+        b.MouseEnter:Connect(function() tw(b, {BackgroundColor3=K.PanelHover}, 0.1) end)
+        b.MouseLeave:Connect(function() tw(b, {BackgroundColor3=K.Panel}, 0.1) end)
+        b.MouseButton1Click:Connect(cb); return b
+    end
+
+    local body
+    mkTopBtn(-26, "✕", function()
+        tw(win, {BackgroundTransparency=1}, 0.2)
+        task.delay(0.25, function() gui:Destroy() end)
+    end)
+    mkTopBtn(-52, "—", function()
+        minimised = not minimised
+        tw(win, {Size=UDim2.fromOffset(WIN_W, minimised and topH+4 or WIN_H)}, 0.2)
+    end)
+    draggable(win, top)
+
+    body = mk("Frame", {
+        Size=UDim2.new(1,0,1,-(topH+2)),
+        Position=UDim2.fromOffset(0, topH+2),
+        BackgroundTransparency=1,
+        ClipsDescendants=false,
+        Parent=win,
+    })
+
+    -- ════════════════════════════════════════════════
+    --  SCREEN A: FLOOR SELECTION
+    -- ════════════════════════════════════════════════
+    local screenA = mk("Frame", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Parent=body})
+
+    local hdrRow = mk("Frame", {Size=UDim2.new(1,0,0,28), BackgroundTransparency=1, Parent=screenA})
+    mk("Frame", {Size=UDim2.new(1,0,0,1), Position=UDim2.new(0,0,1,-1), BackgroundColor3=K.GoldDark, BorderSizePixel=0, Parent=hdrRow})
+    mk("TextLabel", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Text="⟡  Choose Your Floor  ⟡", TextColor3=K.GoldBright, TextSize=12, Font=Enum.Font.Antique, Parent=hdrRow})
+
+    local floorScroll = mk("ScrollingFrame", {
+        Size=UDim2.new(1,0,1,-32), Position=UDim2.fromOffset(0,32),
+        BackgroundTransparency=1, BorderSizePixel=0,
+        ScrollBarThickness=3, ScrollBarImageColor3=K.GoldDark,
+        ScrollingDirection=Enum.ScrollingDirection.Y,
+        CanvasSize=UDim2.new(0,0,0,0), AutomaticCanvasSize=Enum.AutomaticSize.Y,
+        Parent=screenA,
+    })
+    pad(floorScroll, 8, 8, 8, 8)
+
+    local CARD_GAP = 4
+    local CARD_H   = 85
+    mk("UIListLayout", {
+        Padding=UDim.new(0, CARD_GAP),
+        FillDirection=Enum.FillDirection.Vertical,
+        HorizontalAlignment=Enum.HorizontalAlignment.Left,
+        SortOrder=Enum.SortOrder.LayoutOrder,
+        Parent=floorScroll,
+    })
+
+    local FLOOR_ORDER = {
+        "Kether","Hokma","Binah","Chesed",
+        "Gebura","Tiphereth","Netzach","Hod",
+        "Yesod","Malkuth",
+    }
+
+    local floorSlots = {}
+    for idx, floorName in ipairs(FLOOR_ORDER) do
+        local assets = FLOORS[floorName]
+        local card = mk("Frame", {
+            LayoutOrder=idx, Size=UDim2.new(1,0,0,CARD_H),
+            BackgroundColor3=Color3.fromRGB(9,7,4), BorderSizePixel=0,
+            ClipsDescendants=true, Parent=floorScroll,
+        })
+        corner(card, 4)
+        local cst = stroke(card, K.GoldDark, 1)
+        -- Subtle diagonal gradient feel via a dark overlay frame
+        mk("Frame", {
+            Size=UDim2.fromScale(1,1),
+            BackgroundColor3=K.GoldDark,
+            BackgroundTransparency=0.92,
+            BorderSizePixel=0, ZIndex=1, Parent=card,
+        })
+        local img = mk("ImageLabel", {
+            Size=UDim2.fromScale(1,1), BackgroundTransparency=1,
+            Image=assets and assets.inactive or "",
+            ScaleType=Enum.ScaleType.Fit, ImageTransparency=0,
+            ZIndex=2, Parent=card,
+        })
+
+        local nameBar = mk("Frame", {
+            Size=UDim2.new(1,0,0,34), Position=UDim2.new(0,0,1,-34),
+            BackgroundColor3=K.Black, BackgroundTransparency=1,
+            BorderSizePixel=0, ZIndex=5, Parent=card,
+        })
+        local accentBar = mk("Frame", {Size=UDim2.fromOffset(3,34), BackgroundColor3=K.GoldBright, BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6, Parent=nameBar})
+        local nameLbl = mk("TextLabel", {
+            Size=UDim2.new(1,-8,0,18), Position=UDim2.fromOffset(8,1),
+            BackgroundTransparency=1, Text="",
+            TextColor3=K.TextTeal, TextTransparency=1,
+            TextSize=13, Font=Enum.Font.Antique,
+            TextXAlignment=Enum.TextXAlignment.Left, ZIndex=6, Parent=nameBar,
+        })
+        local desc = FLOOR_DESCS[floorName] or ""
+        local descLbl = mk("TextLabel", {
+            Size=UDim2.new(1,-8,0,14), Position=UDim2.fromOffset(8,19),
+            BackgroundTransparency=1, Text=desc,
+            TextColor3=K.TextGold, TextTransparency=1,
+            TextSize=9, Font=Enum.Font.Gotham,
+            TextXAlignment=Enum.TextXAlignment.Left, ZIndex=6, Parent=nameBar,
+        })
+        floorSlots[floorName] = {
+            card=card, img=img, cst=cst, assets=assets,
+            nameBar=nameBar, accentBar=accentBar,
+            nameLbl=nameLbl, descLbl=descLbl,
+        }
+    end
+
+    -- ════════════════════════════════════════════════
+    --  SCREEN B: TAB CONTENT
+    -- ════════════════════════════════════════════════
+    local screenB = mk("Frame", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Visible=false, Parent=body})
+
+    local backRow = mk("Frame", {Size=UDim2.new(1,0,0,32), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=screenB})
+    mk("Frame", {Size=UDim2.new(1,0,0,1), Position=UDim2.new(0,0,1,-1), BackgroundColor3=K.GoldDark, BorderSizePixel=0, Parent=backRow})
+
+    local backBtn = mk("TextButton", {
+        Size=UDim2.fromOffset(80,22), Position=UDim2.fromOffset(8,5),
+        BackgroundColor3=K.Panel, Text="◁  Back",
+        TextColor3=K.TextGold, TextSize=11, Font=Enum.Font.Antique, Parent=backRow,
+    })
+    local bst = stroke(backBtn, K.GoldDark, 1); corner(backBtn, 2)
+    backBtn.MouseEnter:Connect(function() tw(backBtn, {BackgroundColor3=K.PanelHover}, 0.1); tw(bst, {Color=K.Gold}, 0.1) end)
+    backBtn.MouseLeave:Connect(function() tw(backBtn, {BackgroundColor3=K.Panel}, 0.1); tw(bst, {Color=K.GoldDark}, 0.1) end)
+
+    local bannerImg = mk("ImageLabel", {
+        Size=UDim2.new(1,-16,0,72), Position=UDim2.new(0,8,0,38),
+        BackgroundTransparency=1, Image="", ScaleType=Enum.ScaleType.Fit, Parent=screenB,
+    })
+
+    mk("Frame", {Size=UDim2.new(1,-16,0,1), Position=UDim2.new(0,8,0,113), BackgroundColor3=K.GoldDark, BorderSizePixel=0, Parent=screenB})
+
+    local contentScroll = mk("ScrollingFrame", {
+        Size=UDim2.new(1,0,1,-118), Position=UDim2.fromOffset(0,118),
+        BackgroundTransparency=1, BorderSizePixel=0,
+        ScrollBarThickness=4, ScrollBarImageColor3=K.Gold,
+        ScrollingDirection=Enum.ScrollingDirection.Y,
+        CanvasSize=UDim2.new(0,0,0,0), AutomaticCanvasSize=Enum.AutomaticSize.Y,
+        ScrollingEnabled=true,
+        ElasticBehavior=Enum.ElasticBehavior.Never,
+        Parent=screenB,
+    })
+    pad(contentScroll, 8, 8, 8, 8)
+    list(contentScroll, 5)
+    -- Global wheel handler: scrolls contentScroll whenever mouse is inside the window
+    UIS.InputChanged:Connect(function(i)
+        if i.UserInputType ~= Enum.UserInputType.MouseWheel then return end
+        if not win.Visible then return end
+        -- Check mouse is within the window bounds
+        local mp  = UIS:GetMouseLocation()
+        local ap  = win.AbsolutePosition
+        local as  = win.AbsoluteSize
+        if mp.X < ap.X or mp.X > ap.X+as.X then return end
+        if mp.Y < ap.Y or mp.Y > ap.Y+as.Y then return end
+        -- Scroll the content area
+        local maxScroll = math.max(0, contentScroll.AbsoluteCanvasSize.Y - contentScroll.AbsoluteSize.Y)
+        contentScroll.CanvasPosition = Vector2.new(0,
+            math.clamp(contentScroll.CanvasPosition.Y - i.Position.Z * 40, 0, maxScroll))
+    end)
+
+
+    local function goToContent(tab)
+        screenB.Visible = true
+        bannerImg.Image = tab.floorAsset and tab.floorAsset.active or ""
+        for _, t in ipairs(tab._allTabs or {}) do t.frame.Visible = false end
+        tab.frame.Visible = true
+        screenA.Position = UDim2.fromScale(0,0)
+        screenB.Position = UDim2.fromScale(1,0)
+        tw(screenA, {Position=UDim2.fromScale(-1,0)}, 0.25, Enum.EasingStyle.Quart)
+        tw(screenB, {Position=UDim2.fromScale(0,0)},  0.25, Enum.EasingStyle.Quart)
+        task.delay(0.27, function() screenA.Visible = false end)
+        contentScroll.CanvasPosition = Vector2.new(0,0)
+    end
+
+    local function goToFloors()
+        screenA.Visible = true
+        screenA.Position = UDim2.fromScale(-1,0)
+        screenB.Position = UDim2.fromScale(0,0)
+        tw(screenB, {Position=UDim2.fromScale(1,0)},  0.25, Enum.EasingStyle.Quart)
+        tw(screenA, {Position=UDim2.fromScale(0,0)},  0.25, Enum.EasingStyle.Quart)
+        task.delay(0.27, function() screenB.Visible = false end)
+    end
+
+    backBtn.MouseButton1Click:Connect(goToFloors)
+
+    UIS.InputBegan:Connect(function(i, gp)
+        if i.UserInputType == Enum.UserInputType.Keyboard then
+            local k = tostring(i.KeyCode):gsub("Enum.KeyCode.", "")
+            if k == toggleKey then hidden = not hidden; win.Visible = not hidden end
+        end
+    end)
+
+    if options.Discord and options.Discord.Enabled then
+        task.delay(2, function() Notify({Title="Discord", Content="discord.gg/"..(options.Discord.Invite or ""), Duration=8}) end)
+    end
+
+    body.Visible = false; win.Visible = true
+    local function afterLoad()
+        body.Visible = true
+        if meta.enabled then cfgLoad(meta, flags) end
+    end
+    showLoading(win, options.LoadingTitle or options.Name or "Archivist", options.LoadingSubtitle or "", afterLoad)
+
+    local Win = {}
+    local allTabs = {}
+
+    function Win:CreateTab(name, floorName)
+        local assets = floorName and FLOORS[floorName] or nil
+        local slot   = floorName and floorSlots[floorName] or nil
+
+        local tabFrame = mk("Frame", {
+            Size=UDim2.new(1,0,0,0),
+            AutomaticSize=Enum.AutomaticSize.Y,
+            BackgroundTransparency=1,
+            Visible=false, Parent=contentScroll,
+        })
+        list(tabFrame, 5)
+
+        local tab = {name=name, floorAsset=assets, floorName=floorName, frame=tabFrame, _allTabs=allTabs}
+        table.insert(allTabs, tab)
+        for _, t in ipairs(allTabs) do t._allTabs = allTabs end
+
+        if slot then
+            local card = slot.card; local img = slot.img; local cst = slot.cst
+            slot.nameLbl.Text = name; slot.nameLbl.TextColor3 = K.TextTeal
+            tw(slot.nameBar,   {BackgroundTransparency=0.22}, 0.2)
+            tw(slot.accentBar, {BackgroundTransparency=0},    0.2)
+            tw(slot.nameLbl,   {TextTransparency=0},          0.25)
+            tw(slot.descLbl,   {TextTransparency=0.15},       0.3)
+            local hb = mk("TextButton", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Text="", ZIndex=8, Parent=card})
+            hb.MouseEnter:Connect(function()
+                tw(cst, {Color=K.Gold, Thickness=1.5}, 0.15)
+                img.Image = assets and assets.active or ""
+            end)
+            hb.MouseLeave:Connect(function()
+                tw(cst, {Color=K.GoldDark, Thickness=1}, 0.15)
+                img.Image = assets and assets.inactive or ""
+            end)
+            hb.MouseButton1Click:Connect(function()
+                img.Image = assets and assets.active or ""
+                tw(cst, {Color=K.Teal, Thickness=2}, 0.18)
+                task.delay(0.15, function() goToContent(tab) end)
+            end)
+        end
+
+        local Tab = {}
+
+        -- ── SubTab: collapsible group with its own header ─────────
+        function Tab:CreateSubTab(title)
+            local expanded = true
+            local subWrap = mk("Frame", {
+                Size=UDim2.new(1,0,0,0),
+                AutomaticSize=Enum.AutomaticSize.Y,
+                BackgroundTransparency=1,
+                BorderSizePixel=0,
+                Parent=tabFrame,
+            })
+            -- Header button
+            local subHdr = mk("TextButton", {
+                Size=UDim2.new(1,0,0,28),
+                BackgroundColor3=K.PanelActive,
+                BorderSizePixel=0,
+                Text="",
+                Parent=subWrap,
+            })
+            stroke(subHdr, K.GoldDark, 1)
+            -- left gold bar
+            mk("Frame", {Size=UDim2.fromOffset(3,28), BackgroundColor3=K.Gold, BorderSizePixel=0, Parent=subHdr})
+            local subTitleLbl = mk("TextLabel", {
+                Size=UDim2.new(1,-30,1,0), Position=UDim2.fromOffset(10,0),
+                BackgroundTransparency=1, Text=title or "SubTab",
+                TextColor3=K.GoldBright, TextSize=12, Font=Enum.Font.Antique,
+                TextXAlignment=Enum.TextXAlignment.Left, Parent=subHdr,
+            })
+            local subArrow = mk("TextLabel", {
+                Size=UDim2.fromOffset(20,28), Position=UDim2.new(1,-22,0,0),
+                BackgroundTransparency=1, Text="▾",
+                TextColor3=K.Gold, TextSize=11, Font=Enum.Font.Gotham,
+                Parent=subHdr,
+            })
+            -- Content area
+            local subContent = mk("Frame", {
+                Size=UDim2.new(1,0,0,0),
+                AutomaticSize=Enum.AutomaticSize.Y,
+                Position=UDim2.fromOffset(0,30),
+                BackgroundColor3=Color3.fromRGB(8,6,3),
+                BorderSizePixel=0,
+                Parent=subWrap,
+            })
+            stroke(subContent, K.GoldDark, 1)
+            pad(subContent, 4, 4, 4, 4)
+            list(subContent, 4)
+
+            subHdr.MouseButton1Click:Connect(function()
+                expanded = not expanded
+                subContent.Visible = expanded
+                subArrow.Text = expanded and "▾" or "▸"
+                tw(subHdr, {BackgroundColor3=expanded and K.PanelActive or K.Panel}, 0.12)
+            end)
+            subHdr.MouseEnter:Connect(function() tw(subHdr, {BackgroundColor3=K.PanelHover}, 0.08) end)
+            subHdr.MouseLeave:Connect(function() tw(subHdr, {BackgroundColor3=expanded and K.PanelActive or K.Panel}, 0.08) end)
+
+            -- Return same API as Tab but parented to subContent
+            local SubTab = {}
+            function SubTab:CreateSection(t)    return E.Section(subContent, t) end
+            function SubTab:CreateButton(o)     return E.Button(subContent, o, flags, meta) end
+            function SubTab:CreateToggle(o)     return E.Toggle(subContent, o, flags, meta) end
+            function SubTab:CreateSlider(o)     return E.Slider(subContent, o, flags, meta) end
+            function SubTab:CreateInput(o)      return E.Input(subContent, o, flags, meta) end
+            function SubTab:CreateKeybind(o)    return E.Keybind(subContent, o, flags, meta) end
+            function SubTab:CreateColorPicker(o) return E.ColorPicker(subContent, o, flags, meta) end
+            function SubTab:CreateLabel(o)      return E.Label(subContent, o) end
+            function SubTab:CreateParagraph(o)  return E.Paragraph(subContent, o) end
+            function SubTab:CreateDropdown(o)   return E.Dropdown(subContent, o, flags, meta, gui) end
+            return SubTab
+        end
+
+        function Tab:CreateSection(title)    return E.Section(tabFrame, title) end
+        function Tab:CreateDivider()
+            local d = mk("Frame", {Size=UDim2.new(1,0,0,1), BackgroundColor3=K.GoldDark, BackgroundTransparency=0.4, BorderSizePixel=0, Parent=tabFrame})
+            return {Set=function(self,v) d.Visible=v end}
+        end
+        function Tab:CreateButton(o)        return E.Button(tabFrame, o, flags, meta) end
+        function Tab:CreateToggle(o)        return E.Toggle(tabFrame, o, flags, meta) end
+        function Tab:CreateSlider(o)        return E.Slider(tabFrame, o, flags, meta) end
+        function Tab:CreateInput(o)         return E.Input(tabFrame, o, flags, meta) end
+        function Tab:CreateKeybind(o)       return E.Keybind(tabFrame, o, flags, meta) end
+        function Tab:CreateColorPicker(o)   return E.ColorPicker(tabFrame, o, flags, meta) end
+        function Tab:CreateLabel(o)         return E.Label(tabFrame, o) end
+        function Tab:CreateParagraph(o)     return E.Paragraph(tabFrame, o) end
+        -- Dropdown passes 'gui' so the floating list can parent to ScreenGui root
+        function Tab:CreateDropdown(o)      return E.Dropdown(tabFrame, o, flags, meta, gui) end
+        return Tab
+    end
+
+    function Win:LoadConfiguration(name) cfgLoad(meta, flags, name) end
+    function Win:SaveConfiguration(name) cfgSave(meta, flags, name) end
+    function Win:ListConfigurations()    return cfgList(meta) end
+    function Win:SetToggleKey(key)       toggleKey = tostring(key or "RightShift") end
+    return Win
+end
+
+function Lib:Notify(o) Notify(o) end
+function Lib:Destroy()
+    for _, n in ipairs({"Archivist","ArchivistNotifs"}) do
+        local g = CoreGui:FindFirstChild(n); if g then g:Destroy() end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════
+--  SYSTEMS
+-- ═══════════════════════════════════════════════════════
+
+print("Archivist v4 loading...")
+local ok, err = pcall(function()
+
+local LP = Players.LocalPlayer
+
+-- ─────────────────────────────────────────────────────────
+--  ESP
+-- ─────────────────────────────────────────────────────────
+local ESPState = {
+    players=false, names=true, distance=true,
+    maxDist=500, thickness=1,
+    color=Color3.fromRGB(0,200,200),
+    mode="Box", team="All",
+}
+local espObjs = {}
+
+local function espRemove(char)
+    if espObjs[char] then
+        for _, o in ipairs(espObjs[char]) do pcall(function() o:Destroy() end) end
+        espObjs[char] = nil
+    end
+end
+
+local function espMakeBox(char)
+    local box = Instance.new("SelectionBox")
+    box.Color3 = ESPState.color
+    box.LineThickness = math.clamp(ESPState.thickness * 0.025, 0.02, 0.15)
+    box.SurfaceTransparency = 0.92
+    box.SurfaceColor3 = ESPState.color
+    box.Adornee = char; box.Parent = workspace
+    return box
+end
+
+local function espMakeHighlight(char)
+    local h = Instance.new("Highlight")
+    h.OutlineColor = ESPState.color
+    h.FillTransparency = 0.85
+    h.OutlineTransparency = 0
+    h.Adornee = char; h.Parent = workspace
+    return h
+end
+
+local function espMakeBillboard(root)
+    local bg = Instance.new("BillboardGui")
+    bg.Size = UDim2.fromOffset(160,40)
+    bg.StudsOffset = Vector3.new(0,3.2,0)
+    bg.AlwaysOnTop = true
+    bg.Adornee = root; bg.Parent = workspace
+    local nl = Instance.new("TextLabel")
+    nl.Name="NameLabel"; nl.Size=UDim2.new(1,0,0.5,0)
+    nl.BackgroundTransparency=1; nl.Text=""
+    nl.TextColor3=ESPState.color; nl.TextSize=13
+    nl.Font=Enum.Font.GothamBold; nl.TextStrokeTransparency=0.5
+    nl.Parent=bg
+    local dl = Instance.new("TextLabel")
+    dl.Name="DistLabel"; dl.Size=UDim2.new(1,0,0.5,0)
+    dl.Position=UDim2.fromScale(0,0.5); dl.BackgroundTransparency=1
+    dl.Text=""; dl.TextColor3=Color3.fromRGB(200,200,200)
+    dl.TextSize=11; dl.Font=Enum.Font.Gotham
+    dl.TextStrokeTransparency=0.5; dl.Parent=bg
+    return bg
+end
+
+local function espAdd(player)
+    if player == LP then return end
+    local char = player.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    if ESPState.team=="Enemies Only" and player.Team==LP.Team then return end
+    if ESPState.team=="Allies Only"  and player.Team~=LP.Team then return end
+    espRemove(char)
+    local objs = {}
+    if ESPState.mode=="Box" or ESPState.mode=="Corner Box" then
+        table.insert(objs, espMakeBox(char))
+    elseif ESPState.mode=="Highlight" then
+        table.insert(objs, espMakeHighlight(char))
+    end
+    local bb = espMakeBillboard(root)
+    local nl = bb:FindFirstChild("NameLabel")
+    if nl then nl.Text = ESPState.names and player.DisplayName or "" end
+    table.insert(objs, bb)
+    espObjs[char] = objs
+    char.AncestryChanged:Connect(function() espRemove(char) end)
+end
+
+local function espRefresh()
+    for char in pairs(espObjs) do espRemove(char) end
+    if not ESPState.players then return end
+    for _, p in ipairs(Players:GetPlayers()) do pcall(espAdd, p) end
+end
+
+RunSvc.Heartbeat:Connect(function()
+    if not ESPState.players then return end
+    local camPos = Camera.CFrame.Position
+    for char, objs in pairs(espObjs) do
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then
+            local dist = math.round((camPos - root.Position).Magnitude)
+            local cull = dist > ESPState.maxDist
+            for _, o in ipairs(objs) do
+                if o:IsA("SelectionBox") or o:IsA("Highlight") then
+                    o.Enabled = not cull
+                elseif o:IsA("BillboardGui") then
+                    o.Enabled = not cull
+                    local dl = o:FindFirstChild("DistLabel")
+                    if dl then dl.Text = ESPState.distance and (dist.." st") or "" end
+                    local nl = o:FindFirstChild("NameLabel")
+                    if nl then nl.TextColor3 = ESPState.color end
+                end
+            end
+        else
+            espRemove(char)
+        end
+    end
+end)
+
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        if ESPState.players then pcall(espAdd, p) end
+    end)
+end)
+
+-- ─────────────────────────────────────────────────────────
+--  LOCK ON
+-- ─────────────────────────────────────────────────────────
+local LockState = {
+    enabled=false, fov=90, smooth=10, part="Head",
+    sort="FOV", key="Q", predict=false, predScale=3,
+}
+local lockedTarget = nil
+local lockConn     = nil
+
+local function lockGetBest()
+    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    local best, bestScore = nil, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            local part = p.Character:FindFirstChild(LockState.part)
+                      or p.Character:FindFirstChild("HumanoidRootPart")
+            if part then
+                local sp, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local fovD = (Vector2.new(sp.X,sp.Y) - center).Magnitude
+                    local wldD = (Camera.CFrame.Position - part.Position).Magnitude
+                    local hum  = p.Character:FindFirstChildOfClass("Humanoid")
+                    local hp   = hum and hum.Health or 100
+                    local score = LockState.sort=="Distance" and wldD
+                               or LockState.sort=="Health"   and hp
+                               or fovD
+                    if fovD <= LockState.fov and score < bestScore then
+                        bestScore = score; best = part
+                    end
+                end
+            end
+        end
+    end
+    return best
+end
+
+local function lockStart()
+    lockedTarget = lockGetBest()
+    if not lockedTarget then return end
+    lockConn = RunSvc.RenderStepped:Connect(function(dt)
+        if not lockedTarget or not lockedTarget.Parent then
+            lockedTarget = nil; lockConn:Disconnect(); lockConn = nil; return
+        end
+        local pos = lockedTarget.Position
+        if LockState.predict then
+            local vel = lockedTarget.AssemblyLinearVelocity or Vector3.zero
+            pos = pos + vel * (dt * LockState.predScale)
+        end
+        local cur  = Camera.CFrame
+        local goal = CFrame.lookAt(cur.Position, pos)
+        local alpha = math.clamp(dt * (61 - LockState.smooth), 0, 1)
+        Camera.CFrame = cur:Lerp(goal, alpha)
+    end)
+end
+
+local function lockStop()
+    lockedTarget = nil
+    if lockConn then lockConn:Disconnect(); lockConn = nil end
+end
+
+UIS.InputBegan:Connect(function(i)
+    if not LockState.enabled then return end
+    if i.UserInputType == Enum.UserInputType.Keyboard then
+        local k = tostring(i.KeyCode):gsub("Enum.KeyCode.", "")
+        if k == LockState.key then
+            if lockedTarget then lockStop() else lockStart() end
+        end
+    end
+end)
+
+-- ─────────────────────────────────────────────────────────
+--  INFINITE JUMP
+-- ─────────────────────────────────────────────────────────
+local infJumpConn
+local function setInfJump(v)
+    if infJumpConn then infJumpConn:Disconnect(); infJumpConn = nil end
+    if v then
+        infJumpConn = UIS.JumpRequest:Connect(function()
+            local char = LP.Character
+            if char then
+                local h = char:FindFirstChildOfClass("Humanoid")
+                if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+            end
+        end)
+    end
+end
+
+-- ─────────────────────────────────────────────────────────
+--  NOCLIP
+-- ─────────────────────────────────────────────────────────
+local noclipConn
+local function setNoclip(v)
+    if noclipConn then noclipConn:Disconnect(); noclipConn = nil end
+    if v then
+        noclipConn = RunSvc.Stepped:Connect(function()
+            local char = LP.Character
+            if char then
+                for _, p in ipairs(char:GetDescendants()) do
+                    if p:IsA("BasePart") then p.CanCollide = false end
+                end
+            end
+        end)
+    else
+        local char = LP.Character
+        if char then
+            for _, p in ipairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then p.CanCollide = true end
+            end
+        end
+    end
+end
+
+-- ═══════════════════════════════════════════════════════
+--  CREATE WINDOW
+-- ═══════════════════════════════════════════════════════
+local Win = Lib:CreateWindow({
+    Name="Archivist", LoadingTitle="Archivist", LoadingSubtitle="by Grauh",
+    ToggleUIKeybind="RightShift",
+    ConfigurationSaving={Enabled=true, FolderName="Archivist", FileName="config"},
+    KeySystem=false,
+})
+
+-- ── ESP TAB (Netzach) ────────────────────────────────────
+local ESP = Win:CreateTab("ESP", "Netzach")
+ESP:CreateSection("Entity ESP")
+ESP:CreateToggle({Name="Player ESP", CurrentValue=false, Flag="esp_players", Callback=function(v)
+    ESPState.players = v; espRefresh()
+end})
+ESP:CreateToggle({Name="Show Names", CurrentValue=true, Flag="esp_names", Callback=function(v)
+    ESPState.names = v
+    for _, objs in pairs(espObjs) do
+        for _, o in ipairs(objs) do
+            if o:IsA("BillboardGui") then
+                local nl = o:FindFirstChild("NameLabel")
+                if nl then nl.Text = v and (function()
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p.Character and p.Character == o.Adornee.Parent then return p.DisplayName end
+                    end; return ""
+                end)() or "" end
+            end
+        end
+    end
+end})
+ESP:CreateToggle({Name="Show Distance", CurrentValue=true, Flag="esp_dist_show", Callback=function(v)
+    ESPState.distance = v
+end})
+ESP:CreateSection("Style")
+ESP:CreateSlider({Name="Max Distance", Range={50,2000}, Increment=50, CurrentValue=500, Flag="esp_maxdist", Suffix="st", Callback=function(v)
+    ESPState.maxDist = v
+end})
+ESP:CreateSlider({Name="Box Thickness", Range={1,5}, Increment=1, CurrentValue=1, Flag="esp_thick", Callback=function(v)
+    ESPState.thickness = v; espRefresh()
+end})
+ESP:CreateColorPicker({Name="ESP Color", Color=Color3.fromRGB(0,200,200), Flag="esp_color", Callback=function(c)
+    ESPState.color = c; espRefresh()
+end})
+ESP:CreateDropdown({Name="Render Mode", Options={"Box","Corner Box","Highlight"}, CurrentOption={"Box"}, MultipleOptions=false, Flag="esp_mode", Callback=function(v)
+    ESPState.mode = type(v)=="table" and v[1] or v; espRefresh()
+end})
+ESP:CreateDropdown({Name="Team Filter", Options={"All","Enemies Only","Allies Only"}, CurrentOption={"All"}, MultipleOptions=false, Flag="esp_team", Callback=function(v)
+    ESPState.team = type(v)=="table" and v[1] or v; espRefresh()
+end})
+
+-- ── COMBAT TAB (Gebura) ──────────────────────────────────
+local Combat = Win:CreateTab("Combat", "Gebura")
+Combat:CreateSection("Lock On")
+Combat:CreateToggle({Name="Enable Lock On", CurrentValue=false, Flag="lockon_on", Callback=function(v)
+    LockState.enabled = v; if not v then lockStop() end
+end})
+Combat:CreateSlider({Name="FOV Circle", Range={10,500}, Increment=5, CurrentValue=90, Flag="lockon_fov", Suffix="px", Callback=function(v)
+    LockState.fov = v
+end})
+Combat:CreateSlider({Name="Smoothness", Range={1,59}, Increment=1, CurrentValue=10, Flag="lockon_smooth", Callback=function(v)
+    LockState.smooth = v
+end})
+Combat:CreateDropdown({Name="Target Part", Options={"Head","HumanoidRootPart","Torso","UpperTorso"}, CurrentOption={"Head"}, MultipleOptions=false, Flag="lockon_part", Callback=function(v)
+    LockState.part = type(v)=="table" and v[1] or v
+end})
+Combat:CreateDropdown({Name="Sort By", Options={"FOV","Distance","Health"}, CurrentOption={"FOV"}, MultipleOptions=false, Flag="lockon_sort", Callback=function(v)
+    LockState.sort = type(v)=="table" and v[1] or v
+end})
+Combat:CreateKeybind({Name="Lock On Key", CurrentKeybind="Q", Flag="lockon_key", Callback=function(k)
+    LockState.key = k
+end})
+Combat:CreateSection("Prediction")
+Combat:CreateToggle({Name="Bullet Prediction", CurrentValue=false, Flag="pred_on", Callback=function(v)
+    LockState.predict = v
+end})
+Combat:CreateSlider({Name="Prediction Scale", Range={1,10}, Increment=1, CurrentValue=3, Flag="pred_scale", Callback=function(v)
+    LockState.predScale = v
+end})
+
+-- ── VISUALS TAB (Yesod) ──────────────────────────────────
+local Visuals = Win:CreateTab("Visuals", "Yesod")
+Visuals:CreateSection("Movement")
+Visuals:CreateToggle({Name="Infinite Jump", CurrentValue=false, Flag="inf_jump", Callback=function(v)
+    setInfJump(v)
+end})
+Visuals:CreateToggle({Name="No Clip", CurrentValue=false, Flag="noclip", Callback=function(v)
+    setNoclip(v)
+end})
+Visuals:CreateSlider({Name="Walk Speed", Range={16,200}, Increment=2, CurrentValue=16, Flag="walkspeed", Callback=function(v)
+    pcall(function()
+        local char = LP.Character
+        if char then local h = char:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed = v end end
+    end)
+end})
+Visuals:CreateSlider({Name="Jump Power", Range={50,500}, Increment=10, CurrentValue=50, Flag="jumppower", Callback=function(v)
+    pcall(function()
+        local char = LP.Character
+        if char then local h = char:FindFirstChildOfClass("Humanoid"); if h then h.JumpPower = v end end
+    end)
+end})
+Visuals:CreateSection("Camera")
+Visuals:CreateSlider({Name="FOV", Range={70,120}, Increment=5, CurrentValue=70, Flag="cam_fov", Callback=function(v)
+    pcall(function() workspace.CurrentCamera.FieldOfView = v end)
+end})
+
+-- ── CONFIG TAB (Hokma) ───────────────────────────────────
+local Cfg = Win:CreateTab("Config", "Hokma")
+Cfg:CreateSection("Toggle UI")
+Cfg:CreateKeybind({
+    Name="Toggle UI Key", CurrentKeybind="RightShift",
+    Callback=function(k)
+        Win:SetToggleKey(k)
+        Lib:Notify({Title="Keybind Set", Content="UI toggle key → "..k, Duration=3})
+    end,
+})
+Cfg:CreateSection("Named Configs")
+Cfg:CreateParagraph({
+    Title="Autosave",
+    Content="Settings save automatically 2s after any change.\nUse Named Configs to keep multiple presets."
+})
+local cfgName = "default"
+local cfgNameEl = Cfg:CreateInput({
+    Name="Config Name", CurrentValue="default",
+    PlaceholderText="e.g. pvp, build, default",
+    Callback=function(v) cfgName = (v ~= "") and v or "default" end,
+})
+Cfg:CreateButton({Name="▶  Save Config", Callback=function()
+    local name = (cfgNameEl._box and cfgNameEl._box.Text ~= "" and cfgNameEl._box.Text)
+                 or (cfgNameEl.CurrentValue ~= "" and cfgNameEl.CurrentValue)
+                 or "default"
+    cfgName = name
+    -- Sync CurrentValue so lazy autosave also uses the right name
+    cfgNameEl.CurrentValue = name
+    Win:SaveConfiguration(name)
+    Lib:Notify({Title="Config Saved", Content="Saved as \""..name.."\"", Duration=3})
+    -- Small delay so the file is flushed before we re-scan
+    task.delay(0.2, function()
+        local newList = Win:ListConfigurations()
+        if #newList == 0 then newList = {"(none saved)"} end
+        if savedDrop then
+            savedDrop:Refresh(newList)
+            savedDrop:Set(name)  -- highlight the just-saved config
+        end
+    end)
+end})
+Cfg:CreateButton({Name="◀  Load Config", Callback=function()
+    local name = (cfgNameEl._box and cfgNameEl._box.Text ~= "" and cfgNameEl._box.Text)
+                 or (cfgNameEl.CurrentValue ~= "" and cfgNameEl.CurrentValue)
+                 or "default"
+    cfgName = name
+    Win:LoadConfiguration(name)
+    Lib:Notify({Title="Config Loaded", Content="Loaded \""..name.."\"", Duration=3})
+end})
+local savedList = Win:ListConfigurations()
+local savedDrop
+if #savedList == 0 then savedList = {"(none saved)"} end
+savedDrop = Cfg:CreateDropdown({
+    Name="Saved Configs", Options=savedList,
+    CurrentOption={savedList[1]}, MultipleOptions=false,
+    Callback=function(v)
+        local n = type(v)=="table" and v[1] or v
+        if n and n ~= "(none saved)" then
+            cfgName = n; cfgNameEl:Set(n)
+            Win:LoadConfiguration(n)
+            Lib:Notify({Title="Loaded", Content="Loaded \""..n.."\"", Duration=3})
+        end
+    end,
+})
+Cfg:CreateDivider()
+Cfg:CreateSection("Info")
+Cfg:CreateParagraph({Title="Keybinds", Content="[Set above] — Toggle UI\nQ (default) — Lock On toggle\n\nSliders autosave with 2s debounce."})
+Cfg:CreateParagraph({Title="ESP Notes", Content="Player ESP draws SelectionBox or Highlight around all players. Culled beyond Max Distance."})
+
+Win:LoadConfiguration()
+
+end)
+if not ok then warn("ARCHIVIST ERROR:", err) end
