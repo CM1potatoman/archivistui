@@ -1,14 +1,14 @@
 --[[
     Archivist UI Library v4
-    LoR Floor Selection → Tab Content flow
+    LoR Floor Selection â†’ Tab Content flow
     Corrected LoR image asset IDs (icon1 = active, icon2 = inactive)
     Working ESP / Combat / Visuals / Config systems
-    FIXED: Dropdown now renders in ScreenGui root, tracked via RenderStepped — no more scroll clipping
+    FIXED: Dropdown now renders in ScreenGui root, tracked via RenderStepped â€” no more scroll clipping
 ]]
 
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  SERVICES
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 local function S(n)
     local s = game:GetService(n)
     local ok, r = pcall(function() return cloneref(s) end)
@@ -22,9 +22,9 @@ local RunSvc  = S("RunService")
 local Players = S("Players")
 local Camera  = workspace.CurrentCamera
 
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  FLOOR ASSETS  (icon1 = ACTIVE, icon2 = INACTIVE)
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 local FLOORS = {
     Binah     = { active = "rbxassetid://118992540792741", inactive = "rbxassetid://70750006605288"   },
     Chesed    = { active = "rbxassetid://70843742734960",  inactive = "rbxassetid://118099007993159"  },
@@ -55,9 +55,9 @@ local UI_FRAME   = "rbxassetid://95809095448101"
 local SCROLL_UP  = "rbxassetid://82653477798138"
 local SCROLL_DN  = "rbxassetid://124907630481805"
 
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  PALETTE
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 local K = {
     BG          = Color3.fromRGB(6,   4,   2),
     Panel       = Color3.fromRGB(11,  8,   5),
@@ -77,9 +77,9 @@ local K = {
     Black       = Color3.fromRGB(0,   0,   0),
 }
 
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  HELPERS
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 local function tw(o, p, t, s, d)
     Tween:Create(o, TweenInfo.new(t or .15, s or Enum.EasingStyle.Quad, d or Enum.EasingDirection.Out), p):Play()
 end
@@ -151,11 +151,11 @@ local function draggable(frame, handle)
     end)
 end
 
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  CONFIG
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
--- Flat root saves with arc_ prefix — works on every executor without subfolder support
+-- Flat root saves with arc_ prefix â€” works on every executor without subfolder support
 local CFG_PREFIX = "arc_"
 
 local function cfgSave(meta, flags, nameOverride)
@@ -254,9 +254,9 @@ local function cfgList(meta)
     return #out > 0 and out or {"(none saved)"}
 end
 
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  NOTIFICATIONS
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 local _nh
 local function getNH()
     if _nh and _nh.Parent then return _nh end
@@ -287,9 +287,9 @@ local function Notify(opts)
     task.delay(dur, function() tw(card, {BackgroundTransparency=1}, 0.3); task.delay(0.35, function() card:Destroy() end) end)
 end
 
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  LOADING SCREEN
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 local function showLoading(parent, title, sub, cb)
     local f = mk("Frame", {Size=UDim2.fromScale(1,1), BackgroundColor3=K.BG, ZIndex=50, Parent=parent})
     local inner = mk("Frame", {Size=UDim2.fromOffset(300,120), Position=UDim2.fromScale(.5,.5), AnchorPoint=Vector2.new(.5,.5), BackgroundTransparency=1, Parent=f})
@@ -309,9 +309,9 @@ local function showLoading(parent, title, sub, cb)
     end)
 end
 
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  UI ELEMENTS
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 local E = {}
 
 function E.Toggle(parent, opts, flags, meta)
@@ -348,8 +348,8 @@ end
 function E.Button(parent, opts, flags, meta)
     local row = mk("Frame", {Size=UDim2.new(1,0,0,36), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=parent})
     local rst = lorPanel(row, K.GoldDark)
-    mk("TextLabel", {Size=UDim2.fromOffset(14,36), Position=UDim2.fromOffset(8,0), BackgroundTransparency=1, Text="◁", TextColor3=K.GoldDark, TextSize=10, Font=Enum.Font.Gotham, Parent=row})
-    mk("TextLabel", {Size=UDim2.fromOffset(14,36), Position=UDim2.new(1,-22,0,0), BackgroundTransparency=1, Text="▷", TextColor3=K.GoldDark, TextSize=10, Font=Enum.Font.Gotham, Parent=row})
+    mk("TextLabel", {Size=UDim2.fromOffset(14,36), Position=UDim2.fromOffset(8,0), BackgroundTransparency=1, Text="â—", TextColor3=K.GoldDark, TextSize=10, Font=Enum.Font.Gotham, Parent=row})
+    mk("TextLabel", {Size=UDim2.fromOffset(14,36), Position=UDim2.new(1,-22,0,0), BackgroundTransparency=1, Text="â–·", TextColor3=K.GoldDark, TextSize=10, Font=Enum.Font.Gotham, Parent=row})
     mk("TextLabel", {Size=UDim2.new(1,-44,1,0), Position=UDim2.fromOffset(22,0), BackgroundTransparency=1, Text=opts.Name or "Button", TextColor3=K.TextGold, TextSize=12, Font=Enum.Font.Antique, Parent=row})
     local btn = mk("TextButton", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Text="", Parent=row})
     btn.MouseEnter:Connect(function() tw(row, {BackgroundColor3=K.PanelHover}, 0.1); tw(rst, {Color=K.Gold}, 0.12) end)
@@ -420,10 +420,10 @@ function E.Input(parent, opts, flags, meta)
     return el
 end
 
--- ═══════════════════════════════════════════════════════
---  DROPDOWN  (v5 — inline expand, pushes content down,
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+--  DROPDOWN  (v5 â€” inline expand, pushes content down,
 --             no floating, no ZIndex issues)
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function E.Dropdown(parent, opts, flags, meta, guiRoot)
     local sel = type(opts.CurrentOption)=="table" and opts.CurrentOption
                 or (opts.CurrentOption and {opts.CurrentOption} or {})
@@ -433,7 +433,7 @@ function E.Dropdown(parent, opts, flags, meta, guiRoot)
     local ROW_H    = 30
     local MAX_ROWS = 6  -- rows visible before scrolling
 
-    -- ── Outer wrapper: header + collapsible list in one frame ────
+    -- â”€â”€ Outer wrapper: header + collapsible list in one frame â”€â”€â”€â”€
     local wrapper = mk("Frame", {
         Size             = UDim2.new(1,0,0,36),
         BackgroundTransparency = 1,
@@ -442,7 +442,7 @@ function E.Dropdown(parent, opts, flags, meta, guiRoot)
         Parent           = parent,
     })
 
-    -- ── Header row ───────────────────────────────────────────────
+    -- â”€â”€ Header row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     local header = mk("Frame", {
         Size             = UDim2.new(1,0,0,36),
         BackgroundColor3 = K.Panel,
@@ -468,12 +468,12 @@ function E.Dropdown(parent, opts, flags, meta, guiRoot)
     })
     local arrowLbl = mk("TextLabel", {
         Size=UDim2.fromOffset(16,36), Position=UDim2.new(1,-18,0,0),
-        BackgroundTransparency=1, Text="▾",
+        BackgroundTransparency=1, Text="â–¾",
         TextColor3=K.Gold, TextSize=12, Font=Enum.Font.Gotham,
         Parent=header,
     })
 
-    -- ── List panel (sits directly below header, same parent) ─────
+    -- â”€â”€ List panel (sits directly below header, same parent) â”€â”€â”€â”€â”€
     local listPanel = mk("ScrollingFrame", {
         Size                 = UDim2.new(1,0,0,0),
         Position             = UDim2.fromOffset(0,38),   -- 36px header + 2px gap
@@ -492,7 +492,7 @@ function E.Dropdown(parent, opts, flags, meta, guiRoot)
     pad(listPanel, 4, 4, 0, 0)
     list(listPanel, 0)
 
-    -- ── Element ──────────────────────────────────────────────────
+    -- â”€â”€ Element â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     local el = {CurrentOption = sel}
     local optBtns = {}
 
@@ -566,7 +566,7 @@ function E.Dropdown(parent, opts, flags, meta, guiRoot)
                     listPanel.Visible = false
                     setWrapperHeight(0)
                     tw(wst, {Color=K.GoldDark}, 0.15)
-                    arrowLbl.Text = "▾"
+                    arrowLbl.Text = "â–¾"
                 end
             end)
             table.insert(optBtns, row)
@@ -578,13 +578,13 @@ function E.Dropdown(parent, opts, flags, meta, guiRoot)
         setWrapperHeight(listH)
     end
 
-    -- ── Toggle ───────────────────────────────────────────────────
+    -- â”€â”€ Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     local function closeList()
         open = false
         listPanel.Visible = false
         setWrapperHeight(0)
         tw(wst, {Color=K.GoldDark}, 0.15)
-        arrowLbl.Text = "▾"
+        arrowLbl.Text = "â–¾"
     end
 
     local function openList()
@@ -592,7 +592,7 @@ function E.Dropdown(parent, opts, flags, meta, guiRoot)
         build()
         listPanel.Visible = true
         tw(wst, {Color=K.Gold}, 0.15)
-        arrowLbl.Text = "▴"
+        arrowLbl.Text = "â–´"
     end
 
     mk("TextButton", {
@@ -728,9 +728,9 @@ function E.Section(parent, title)
     return {Set=function(self, t) for _, c in ipairs(bg:GetChildren()) do if c:IsA("TextLabel") then c.Text = t end end end}
 end
 
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  LIBRARY
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 local Lib = {Flags={}}
 
 function Lib:CreateWindow(options)
@@ -747,7 +747,7 @@ function Lib:CreateWindow(options)
     pcall(function() gui.Parent = gethui() end)
     if not gui.Parent then pcall(function() gui.Parent = CoreGui end) end
 
-    -- ── Patch E.Dropdown to close the gui reference via closure ──
+    -- â”€â”€ Patch E.Dropdown to close the gui reference via closure â”€â”€
     -- We rebind CreateDropdown in the Tab API below to pass 'gui' automatically.
 
     local WIN_W, WIN_H = 460, 700
@@ -786,11 +786,11 @@ function Lib:CreateWindow(options)
     end
 
     local body
-    mkTopBtn(-26, "✕", function()
+    mkTopBtn(-26, "âœ•", function()
         tw(win, {BackgroundTransparency=1}, 0.2)
         task.delay(0.25, function() gui:Destroy() end)
     end)
-    mkTopBtn(-52, "—", function()
+    mkTopBtn(-52, "â€”", function()
         minimised = not minimised
         tw(win, {Size=UDim2.fromOffset(WIN_W, minimised and topH+4 or WIN_H)}, 0.2)
     end)
@@ -804,14 +804,14 @@ function Lib:CreateWindow(options)
         Parent=win,
     })
 
-    -- ════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     --  SCREEN A: FLOOR SELECTION
-    -- ════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     local screenA = mk("Frame", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Parent=body})
 
     local hdrRow = mk("Frame", {Size=UDim2.new(1,0,0,28), BackgroundTransparency=1, Parent=screenA})
     mk("Frame", {Size=UDim2.new(1,0,0,1), Position=UDim2.new(0,0,1,-1), BackgroundColor3=K.GoldDark, BorderSizePixel=0, Parent=hdrRow})
-    mk("TextLabel", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Text="⟡  Choose Your Floor  ⟡", TextColor3=K.GoldBright, TextSize=12, Font=Enum.Font.Antique, Parent=hdrRow})
+    mk("TextLabel", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Text="âŸ¡  Choose Your Floor  âŸ¡", TextColor3=K.GoldBright, TextSize=12, Font=Enum.Font.Antique, Parent=hdrRow})
 
     local floorScroll = mk("ScrollingFrame", {
         Size=UDim2.new(1,0,1,-32), Position=UDim2.fromOffset(0,32),
@@ -891,9 +891,9 @@ function Lib:CreateWindow(options)
         }
     end
 
-    -- ════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     --  SCREEN B: TAB CONTENT
-    -- ════════════════════════════════════════════════
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     local screenB = mk("Frame", {Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Visible=false, Parent=body})
 
     local backRow = mk("Frame", {Size=UDim2.new(1,0,0,32), BackgroundColor3=K.Panel, BorderSizePixel=0, Parent=screenB})
@@ -901,7 +901,7 @@ function Lib:CreateWindow(options)
 
     local backBtn = mk("TextButton", {
         Size=UDim2.fromOffset(80,22), Position=UDim2.fromOffset(8,5),
-        BackgroundColor3=K.Panel, Text="◁  Back",
+        BackgroundColor3=K.Panel, Text="â—  Back",
         TextColor3=K.TextGold, TextSize=11, Font=Enum.Font.Antique, Parent=backRow,
     })
     local bst = stroke(backBtn, K.GoldDark, 1); corner(backBtn, 2)
@@ -1030,7 +1030,7 @@ function Lib:CreateWindow(options)
 
         local Tab = {}
 
-        -- ── SubTab: collapsible group with its own header ─────────
+        -- â”€â”€ SubTab: collapsible group with its own header â”€â”€â”€â”€â”€â”€â”€â”€â”€
         function Tab:CreateSubTab(title)
             local expanded = true
             local subWrap = mk("Frame", {
@@ -1059,7 +1059,7 @@ function Lib:CreateWindow(options)
             })
             local subArrow = mk("TextLabel", {
                 Size=UDim2.fromOffset(20,28), Position=UDim2.new(1,-22,0,0),
-                BackgroundTransparency=1, Text="▾",
+                BackgroundTransparency=1, Text="â–¾",
                 TextColor3=K.Gold, TextSize=11, Font=Enum.Font.Gotham,
                 Parent=subHdr,
             })
@@ -1079,7 +1079,7 @@ function Lib:CreateWindow(options)
             subHdr.MouseButton1Click:Connect(function()
                 expanded = not expanded
                 subContent.Visible = expanded
-                subArrow.Text = expanded and "▾" or "▸"
+                subArrow.Text = expanded and "â–¾" or "â–¸"
                 tw(subHdr, {BackgroundColor3=expanded and K.PanelActive or K.Panel}, 0.12)
             end)
             subHdr.MouseEnter:Connect(function() tw(subHdr, {BackgroundColor3=K.PanelHover}, 0.08) end)
@@ -1132,250 +1132,9 @@ function Lib:Destroy()
     end
 end
 
--- ═══════════════════════════════════════════════════════
---  SYSTEMS
--- ═══════════════════════════════════════════════════════
-
-print("Archivist v4 loading...")
-local ok, err = pcall(function()
-
-local LP = Players.LocalPlayer
-
--- ─────────────────────────────────────────────────────────
---  ESP
--- ─────────────────────────────────────────────────────────
-local ESPState = {
-    players=false, names=true, distance=true,
-    maxDist=500, thickness=1,
-    color=Color3.fromRGB(0,200,200),
-    mode="Box", team="All",
-}
-local espObjs = {}
-
-local function espRemove(char)
-    if espObjs[char] then
-        for _, o in ipairs(espObjs[char]) do pcall(function() o:Destroy() end) end
-        espObjs[char] = nil
-    end
-end
-
-local function espMakeBox(char)
-    local box = Instance.new("SelectionBox")
-    box.Color3 = ESPState.color
-    box.LineThickness = math.clamp(ESPState.thickness * 0.025, 0.02, 0.15)
-    box.SurfaceTransparency = 0.92
-    box.SurfaceColor3 = ESPState.color
-    box.Adornee = char; box.Parent = workspace
-    return box
-end
-
-local function espMakeHighlight(char)
-    local h = Instance.new("Highlight")
-    h.OutlineColor = ESPState.color
-    h.FillTransparency = 0.85
-    h.OutlineTransparency = 0
-    h.Adornee = char; h.Parent = workspace
-    return h
-end
-
-local function espMakeBillboard(root)
-    local bg = Instance.new("BillboardGui")
-    bg.Size = UDim2.fromOffset(160,40)
-    bg.StudsOffset = Vector3.new(0,3.2,0)
-    bg.AlwaysOnTop = true
-    bg.Adornee = root; bg.Parent = workspace
-    local nl = Instance.new("TextLabel")
-    nl.Name="NameLabel"; nl.Size=UDim2.new(1,0,0.5,0)
-    nl.BackgroundTransparency=1; nl.Text=""
-    nl.TextColor3=ESPState.color; nl.TextSize=13
-    nl.Font=Enum.Font.GothamBold; nl.TextStrokeTransparency=0.5
-    nl.Parent=bg
-    local dl = Instance.new("TextLabel")
-    dl.Name="DistLabel"; dl.Size=UDim2.new(1,0,0.5,0)
-    dl.Position=UDim2.fromScale(0,0.5); dl.BackgroundTransparency=1
-    dl.Text=""; dl.TextColor3=Color3.fromRGB(200,200,200)
-    dl.TextSize=11; dl.Font=Enum.Font.Gotham
-    dl.TextStrokeTransparency=0.5; dl.Parent=bg
-    return bg
-end
-
-local function espAdd(player)
-    if player == LP then return end
-    local char = player.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    if ESPState.team=="Enemies Only" and player.Team==LP.Team then return end
-    if ESPState.team=="Allies Only"  and player.Team~=LP.Team then return end
-    espRemove(char)
-    local objs = {}
-    if ESPState.mode=="Box" or ESPState.mode=="Corner Box" then
-        table.insert(objs, espMakeBox(char))
-    elseif ESPState.mode=="Highlight" then
-        table.insert(objs, espMakeHighlight(char))
-    end
-    local bb = espMakeBillboard(root)
-    local nl = bb:FindFirstChild("NameLabel")
-    if nl then nl.Text = ESPState.names and player.DisplayName or "" end
-    table.insert(objs, bb)
-    espObjs[char] = objs
-    char.AncestryChanged:Connect(function() espRemove(char) end)
-end
-
-local function espRefresh()
-    for char in pairs(espObjs) do espRemove(char) end
-    if not ESPState.players then return end
-    for _, p in ipairs(Players:GetPlayers()) do pcall(espAdd, p) end
-end
-
-RunSvc.Heartbeat:Connect(function()
-    if not ESPState.players then return end
-    local camPos = Camera.CFrame.Position
-    for char, objs in pairs(espObjs) do
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if root then
-            local dist = math.round((camPos - root.Position).Magnitude)
-            local cull = dist > ESPState.maxDist
-            for _, o in ipairs(objs) do
-                if o:IsA("SelectionBox") or o:IsA("Highlight") then
-                    o.Enabled = not cull
-                elseif o:IsA("BillboardGui") then
-                    o.Enabled = not cull
-                    local dl = o:FindFirstChild("DistLabel")
-                    if dl then dl.Text = ESPState.distance and (dist.." st") or "" end
-                    local nl = o:FindFirstChild("NameLabel")
-                    if nl then nl.TextColor3 = ESPState.color end
-                end
-            end
-        else
-            espRemove(char)
-        end
-    end
-end)
-
-Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        if ESPState.players then pcall(espAdd, p) end
-    end)
-end)
-
--- ─────────────────────────────────────────────────────────
---  LOCK ON
--- ─────────────────────────────────────────────────────────
-local LockState = {
-    enabled=false, fov=90, smooth=10, part="Head",
-    sort="FOV", key="Q", predict=false, predScale=3,
-}
-local lockedTarget = nil
-local lockConn     = nil
-
-local function lockGetBest()
-    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    local best, bestScore = nil, math.huge
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character then
-            local part = p.Character:FindFirstChild(LockState.part)
-                      or p.Character:FindFirstChild("HumanoidRootPart")
-            if part then
-                local sp, onScreen = Camera:WorldToViewportPoint(part.Position)
-                if onScreen then
-                    local fovD = (Vector2.new(sp.X,sp.Y) - center).Magnitude
-                    local wldD = (Camera.CFrame.Position - part.Position).Magnitude
-                    local hum  = p.Character:FindFirstChildOfClass("Humanoid")
-                    local hp   = hum and hum.Health or 100
-                    local score = LockState.sort=="Distance" and wldD
-                               or LockState.sort=="Health"   and hp
-                               or fovD
-                    if fovD <= LockState.fov and score < bestScore then
-                        bestScore = score; best = part
-                    end
-                end
-            end
-        end
-    end
-    return best
-end
-
-local function lockStart()
-    lockedTarget = lockGetBest()
-    if not lockedTarget then return end
-    lockConn = RunSvc.RenderStepped:Connect(function(dt)
-        if not lockedTarget or not lockedTarget.Parent then
-            lockedTarget = nil; lockConn:Disconnect(); lockConn = nil; return
-        end
-        local pos = lockedTarget.Position
-        if LockState.predict then
-            local vel = lockedTarget.AssemblyLinearVelocity or Vector3.zero
-            pos = pos + vel * (dt * LockState.predScale)
-        end
-        local cur  = Camera.CFrame
-        local goal = CFrame.lookAt(cur.Position, pos)
-        local alpha = math.clamp(dt * (61 - LockState.smooth), 0, 1)
-        Camera.CFrame = cur:Lerp(goal, alpha)
-    end)
-end
-
-local function lockStop()
-    lockedTarget = nil
-    if lockConn then lockConn:Disconnect(); lockConn = nil end
-end
-
-UIS.InputBegan:Connect(function(i)
-    if not LockState.enabled then return end
-    if i.UserInputType == Enum.UserInputType.Keyboard then
-        local k = tostring(i.KeyCode):gsub("Enum.KeyCode.", "")
-        if k == LockState.key then
-            if lockedTarget then lockStop() else lockStart() end
-        end
-    end
-end)
-
--- ─────────────────────────────────────────────────────────
---  INFINITE JUMP
--- ─────────────────────────────────────────────────────────
-local infJumpConn
-local function setInfJump(v)
-    if infJumpConn then infJumpConn:Disconnect(); infJumpConn = nil end
-    if v then
-        infJumpConn = UIS.JumpRequest:Connect(function()
-            local char = LP.Character
-            if char then
-                local h = char:FindFirstChildOfClass("Humanoid")
-                if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
-            end
-        end)
-    end
-end
-
--- ─────────────────────────────────────────────────────────
---  NOCLIP
--- ─────────────────────────────────────────────────────────
-local noclipConn
-local function setNoclip(v)
-    if noclipConn then noclipConn:Disconnect(); noclipConn = nil end
-    if v then
-        noclipConn = RunSvc.Stepped:Connect(function()
-            local char = LP.Character
-            if char then
-                for _, p in ipairs(char:GetDescendants()) do
-                    if p:IsA("BasePart") then p.CanCollide = false end
-                end
-            end
-        end)
-    else
-        local char = LP.Character
-        if char then
-            for _, p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") then p.CanCollide = true end
-            end
-        end
-    end
-end
-
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 --  CREATE WINDOW
--- ═══════════════════════════════════════════════════════
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 local Win = Lib:CreateWindow({
     Name="Archivist", LoadingTitle="Archivist", LoadingSubtitle="by Grauh",
     ToggleUIKeybind="RightShift",
@@ -1383,110 +1142,50 @@ local Win = Lib:CreateWindow({
     KeySystem=false,
 })
 
--- ── ESP TAB (Netzach) ────────────────────────────────────
+-- â”€â”€ ESP TAB (Netzach) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local ESP = Win:CreateTab("ESP", "Netzach")
 ESP:CreateSection("Entity ESP")
-ESP:CreateToggle({Name="Player ESP", CurrentValue=false, Flag="esp_players", Callback=function(v)
-    ESPState.players = v; espRefresh()
-end})
-ESP:CreateToggle({Name="Show Names", CurrentValue=true, Flag="esp_names", Callback=function(v)
-    ESPState.names = v
-    for _, objs in pairs(espObjs) do
-        for _, o in ipairs(objs) do
-            if o:IsA("BillboardGui") then
-                local nl = o:FindFirstChild("NameLabel")
-                if nl then nl.Text = v and (function()
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p.Character and p.Character == o.Adornee.Parent then return p.DisplayName end
-                    end; return ""
-                end)() or "" end
-            end
-        end
-    end
-end})
-ESP:CreateToggle({Name="Show Distance", CurrentValue=true, Flag="esp_dist_show", Callback=function(v)
-    ESPState.distance = v
-end})
+ESP:CreateToggle({Name="Player ESP",    CurrentValue=false, Flag="esp_players",   Callback=function(v) end})
+ESP:CreateToggle({Name="Show Names",    CurrentValue=true,  Flag="esp_names",     Callback=function(v) end})
+ESP:CreateToggle({Name="Show Distance", CurrentValue=true,  Flag="esp_dist_show", Callback=function(v) end})
 ESP:CreateSection("Style")
-ESP:CreateSlider({Name="Max Distance", Range={50,2000}, Increment=50, CurrentValue=500, Flag="esp_maxdist", Suffix="st", Callback=function(v)
-    ESPState.maxDist = v
-end})
-ESP:CreateSlider({Name="Box Thickness", Range={1,5}, Increment=1, CurrentValue=1, Flag="esp_thick", Callback=function(v)
-    ESPState.thickness = v; espRefresh()
-end})
-ESP:CreateColorPicker({Name="ESP Color", Color=Color3.fromRGB(0,200,200), Flag="esp_color", Callback=function(c)
-    ESPState.color = c; espRefresh()
-end})
-ESP:CreateDropdown({Name="Render Mode", Options={"Box","Corner Box","Highlight"}, CurrentOption={"Box"}, MultipleOptions=false, Flag="esp_mode", Callback=function(v)
-    ESPState.mode = type(v)=="table" and v[1] or v; espRefresh()
-end})
-ESP:CreateDropdown({Name="Team Filter", Options={"All","Enemies Only","Allies Only"}, CurrentOption={"All"}, MultipleOptions=false, Flag="esp_team", Callback=function(v)
-    ESPState.team = type(v)=="table" and v[1] or v; espRefresh()
-end})
+ESP:CreateSlider({Name="Max Distance",  Range={50,2000}, Increment=50, CurrentValue=500, Flag="esp_maxdist", Suffix="st", Callback=function(v) end})
+ESP:CreateSlider({Name="Box Thickness", Range={1,5},     Increment=1,  CurrentValue=1,   Flag="esp_thick",              Callback=function(v) end})
+ESP:CreateColorPicker({Name="ESP Color", Color=Color3.fromRGB(0,200,200), Flag="esp_color", Callback=function(c) end})
+ESP:CreateDropdown({Name="Render Mode", Options={"Box","Corner Box","Highlight"},     CurrentOption={"Box"}, MultipleOptions=false, Flag="esp_mode", Callback=function(v) end})
+ESP:CreateDropdown({Name="Team Filter", Options={"All","Enemies Only","Allies Only"}, CurrentOption={"All"}, MultipleOptions=false, Flag="esp_team", Callback=function(v) end})
 
--- ── COMBAT TAB (Gebura) ──────────────────────────────────
+-- â”€â”€ COMBAT TAB (Gebura) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local Combat = Win:CreateTab("Combat", "Gebura")
 Combat:CreateSection("Lock On")
-Combat:CreateToggle({Name="Enable Lock On", CurrentValue=false, Flag="lockon_on", Callback=function(v)
-    LockState.enabled = v; if not v then lockStop() end
-end})
-Combat:CreateSlider({Name="FOV Circle", Range={10,500}, Increment=5, CurrentValue=90, Flag="lockon_fov", Suffix="px", Callback=function(v)
-    LockState.fov = v
-end})
-Combat:CreateSlider({Name="Smoothness", Range={1,59}, Increment=1, CurrentValue=10, Flag="lockon_smooth", Callback=function(v)
-    LockState.smooth = v
-end})
-Combat:CreateDropdown({Name="Target Part", Options={"Head","HumanoidRootPart","Torso","UpperTorso"}, CurrentOption={"Head"}, MultipleOptions=false, Flag="lockon_part", Callback=function(v)
-    LockState.part = type(v)=="table" and v[1] or v
-end})
-Combat:CreateDropdown({Name="Sort By", Options={"FOV","Distance","Health"}, CurrentOption={"FOV"}, MultipleOptions=false, Flag="lockon_sort", Callback=function(v)
-    LockState.sort = type(v)=="table" and v[1] or v
-end})
-Combat:CreateKeybind({Name="Lock On Key", CurrentKeybind="Q", Flag="lockon_key", Callback=function(k)
-    LockState.key = k
-end})
+Combat:CreateToggle({Name="Enable Lock On",   CurrentValue=false, Flag="lockon_on",     Callback=function(v) end})
+Combat:CreateSlider({Name="FOV Circle",        Range={10,500}, Increment=5,  CurrentValue=90,  Flag="lockon_fov",    Suffix="px", Callback=function(v) end})
+Combat:CreateSlider({Name="Smoothness",        Range={1,59},   Increment=1,  CurrentValue=10,  Flag="lockon_smooth",              Callback=function(v) end})
+Combat:CreateDropdown({Name="Target Part", Options={"Head","HumanoidRootPart","Torso","UpperTorso"}, CurrentOption={"Head"}, MultipleOptions=false, Flag="lockon_part", Callback=function(v) end})
+Combat:CreateDropdown({Name="Sort By",     Options={"FOV","Distance","Health"},                      CurrentOption={"FOV"},  MultipleOptions=false, Flag="lockon_sort", Callback=function(v) end})
+Combat:CreateKeybind({Name="Lock On Key", CurrentKeybind="Q", Flag="lockon_key", Callback=function(k) end})
 Combat:CreateSection("Prediction")
-Combat:CreateToggle({Name="Bullet Prediction", CurrentValue=false, Flag="pred_on", Callback=function(v)
-    LockState.predict = v
-end})
-Combat:CreateSlider({Name="Prediction Scale", Range={1,10}, Increment=1, CurrentValue=3, Flag="pred_scale", Callback=function(v)
-    LockState.predScale = v
-end})
+Combat:CreateToggle({Name="Bullet Prediction", CurrentValue=false, Flag="pred_on",    Callback=function(v) end})
+Combat:CreateSlider({Name="Prediction Scale",  Range={1,10}, Increment=1, CurrentValue=3, Flag="pred_scale", Callback=function(v) end})
 
--- ── VISUALS TAB (Yesod) ──────────────────────────────────
+-- â”€â”€ VISUALS TAB (Yesod) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local Visuals = Win:CreateTab("Visuals", "Yesod")
 Visuals:CreateSection("Movement")
-Visuals:CreateToggle({Name="Infinite Jump", CurrentValue=false, Flag="inf_jump", Callback=function(v)
-    setInfJump(v)
-end})
-Visuals:CreateToggle({Name="No Clip", CurrentValue=false, Flag="noclip", Callback=function(v)
-    setNoclip(v)
-end})
-Visuals:CreateSlider({Name="Walk Speed", Range={16,200}, Increment=2, CurrentValue=16, Flag="walkspeed", Callback=function(v)
-    pcall(function()
-        local char = LP.Character
-        if char then local h = char:FindFirstChildOfClass("Humanoid"); if h then h.WalkSpeed = v end end
-    end)
-end})
-Visuals:CreateSlider({Name="Jump Power", Range={50,500}, Increment=10, CurrentValue=50, Flag="jumppower", Callback=function(v)
-    pcall(function()
-        local char = LP.Character
-        if char then local h = char:FindFirstChildOfClass("Humanoid"); if h then h.JumpPower = v end end
-    end)
-end})
+Visuals:CreateToggle({Name="Infinite Jump", CurrentValue=false, Flag="inf_jump",  Callback=function(v) end})
+Visuals:CreateToggle({Name="No Clip",       CurrentValue=false, Flag="noclip",    Callback=function(v) end})
+Visuals:CreateSlider({Name="Walk Speed",    Range={16,200}, Increment=2,  CurrentValue=16, Flag="walkspeed", Callback=function(v) end})
+Visuals:CreateSlider({Name="Jump Power",    Range={50,500}, Increment=10, CurrentValue=50, Flag="jumppower", Callback=function(v) end})
 Visuals:CreateSection("Camera")
-Visuals:CreateSlider({Name="FOV", Range={70,120}, Increment=5, CurrentValue=70, Flag="cam_fov", Callback=function(v)
-    pcall(function() workspace.CurrentCamera.FieldOfView = v end)
-end})
+Visuals:CreateSlider({Name="FOV", Range={70,120}, Increment=5, CurrentValue=70, Flag="cam_fov", Callback=function(v) end})
 
--- ── CONFIG TAB (Hokma) ───────────────────────────────────
+-- â”€â”€ CONFIG TAB (Hokma) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 local Cfg = Win:CreateTab("Config", "Hokma")
 Cfg:CreateSection("Toggle UI")
 Cfg:CreateKeybind({
     Name="Toggle UI Key", CurrentKeybind="RightShift",
     Callback=function(k)
         Win:SetToggleKey(k)
-        Lib:Notify({Title="Keybind Set", Content="UI toggle key → "..k, Duration=3})
+        Lib:Notify({Title="Keybind Set", Content="UI toggle key â†’ "..k, Duration=3})
     end,
 })
 Cfg:CreateSection("Named Configs")
@@ -1500,26 +1199,24 @@ local cfgNameEl = Cfg:CreateInput({
     PlaceholderText="e.g. pvp, build, default",
     Callback=function(v) cfgName = (v ~= "") and v or "default" end,
 })
-Cfg:CreateButton({Name="▶  Save Config", Callback=function()
+Cfg:CreateButton({Name="â–¶  Save Config", Callback=function()
     local name = (cfgNameEl._box and cfgNameEl._box.Text ~= "" and cfgNameEl._box.Text)
                  or (cfgNameEl.CurrentValue ~= "" and cfgNameEl.CurrentValue)
                  or "default"
     cfgName = name
-    -- Sync CurrentValue so lazy autosave also uses the right name
     cfgNameEl.CurrentValue = name
     Win:SaveConfiguration(name)
     Lib:Notify({Title="Config Saved", Content="Saved as \""..name.."\"", Duration=3})
-    -- Small delay so the file is flushed before we re-scan
     task.delay(0.2, function()
         local newList = Win:ListConfigurations()
         if #newList == 0 then newList = {"(none saved)"} end
         if savedDrop then
             savedDrop:Refresh(newList)
-            savedDrop:Set(name)  -- highlight the just-saved config
+            savedDrop:Set(name)
         end
     end)
 end})
-Cfg:CreateButton({Name="◀  Load Config", Callback=function()
+Cfg:CreateButton({Name="â—€  Load Config", Callback=function()
     local name = (cfgNameEl._box and cfgNameEl._box.Text ~= "" and cfgNameEl._box.Text)
                  or (cfgNameEl.CurrentValue ~= "" and cfgNameEl.CurrentValue)
                  or "default"
@@ -1544,10 +1241,7 @@ savedDrop = Cfg:CreateDropdown({
 })
 Cfg:CreateDivider()
 Cfg:CreateSection("Info")
-Cfg:CreateParagraph({Title="Keybinds", Content="[Set above] — Toggle UI\nQ (default) — Lock On toggle\n\nSliders autosave with 2s debounce."})
-Cfg:CreateParagraph({Title="ESP Notes", Content="Player ESP draws SelectionBox or Highlight around all players. Culled beyond Max Distance."})
+Cfg:CreateParagraph({Title="Keybinds", Content="[Set above] â€” Toggle UI\n\nSliders autosave with 2s debounce."})
 
 Win:LoadConfiguration()
 
-end)
-if not ok then warn("ARCHIVIST ERROR:", err) end
